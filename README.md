@@ -16,7 +16,7 @@ This semester, you've learned how to implement real-time robotics software on a 
 
 Now, your team will apply everything you’ve learned to engineer the perfect moon-stealing contraption and out-race your fellow minions to the finish!
 
-<img src="media/despicable_me_moon.png" width="150"/>
+<img src="media/despicable_me_moon.png" width="400"/>
 
 ### 3, 2, 1, GO! (should change this)
 
@@ -37,7 +37,7 @@ Luckily, through RSS, you’ve learned everything you need to become the ultimat
 
 ### Part A: Shrink Ray Heist
 
-<img src="media/vector.png" width="300"/>
+<img src="media/vector.png" width="150"/>
 
 Part A is worth 25% of your Final Challenge technical grade. You get 3 attempts and your grade is based on your best attempt out of 3. Your grade will be calculated based on completion of the course and the number of penalties you incur as follows. 
 
