@@ -16,7 +16,7 @@ This semester, you've learned how to implement real-time robotics software on a 
 
 Now, your team will apply everything you’ve learned to engineer the perfect moon-stealing contraption and out-race your fellow minions to the finish!
 
-<img src="media/despicable_me_moon.png" width="300"/>
+<img src="media/despicable_me_moon.png" width="150"/>
 
 ### 3, 2, 1, GO! (should change this)
 
