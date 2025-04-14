@@ -53,7 +53,7 @@ You’ll earn 30 points for reaching each location, and uou’ll earn 20 points 
 
 Formula for Penalities: 
 
-`penalties =  min(5 * detections, 30) + 10 * manual_assist + min(seconds_over_baseline, 30) + 5 * incorrect_parts`
+`penalties =  min(5 * detections, 30) + 10 * manual_assist + 10 * incorrect_parts`
 
 `detections` is the number of times you trigger Vector's security system. There are a couple ways that can happen:
 
@@ -67,13 +67,13 @@ The maximum penalty you can recieve for detections is 30 points.
 
 The `manual_assist` is the number of maneuvers (counted individually for turning a corner, stopping before a light, resetting a car, etc.) that required manual teleop intervention. 10 points will be docked for each assist.
 
-`seconds_over_baseline` will be calculated as the difference between a TA provided baseline and your solution (to reach both locations and reassemble the shrinkray), with a maximum penalty of 30 points. 
-
-`incorrect_parts` will be the number of decoy parts picked up (in place of the real component). This has a maximum penalty of 5 points.
+`incorrect_parts` will be the number of decoy parts picked up (in place of the real component). This has a maximum penalty of 20 points.
 
 The formula for calculating score and penalty values may change for fairness (Penalties may be decreased in severity for a clearly functioning solution, for example).
 
 ### Part B: Race to the Moon
+
+<img src="media/minions.png" width="150"/>
 
 Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
 
