@@ -112,7 +112,7 @@ The Shrink Ray Heist will take place in Vector's fortress (stata basement).
 
 Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a representive map of Vector's lair, and the 2 locations where the parts are located. The exact configuration of locations and surveillance signals are a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
 
-Gru, in his infinite wisdom, has already created a ~ machine learning ~ based stop sign detector for you (located in /shrink_ray_heist)! It not only tells you if there is a shrink ray part in camera view, but which one is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it.
+Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in /shrink_ray_heist)! It not only tells you if there is a shrink ray part in camera view, but which one is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it.
 
 Here are the details of the challenge:
 
@@ -135,7 +135,7 @@ Here are some things you may consider in developing your approach:
 - How do you implement the high-level logic that puts together localization, path-planning, object detection, and collision avoidance?
   - Perhaps a state machine would be helpful--how would you connect the different tasks?
 - How should the speed of your car be adjusted as you detect person/obstacle/light, decide it is close enough, and turn corners?
-- The decoy part detector is good, but not perfect. What other features might you consider looking for to succesfully choose the correct one? 
+- The shrink ray detector is good, but not perfect. What other features might you consider looking for to succesfully choose the correct part? 
 
 As always, your safety controller should be turned on for this portion of the Final Challenge as well.
 
@@ -143,12 +143,14 @@ As always, your safety controller should be turned on for this portion of the Fi
 
 ### Environment and Task
 
-The Final Race will take place on the entire Johnson track loop. This is a standard-size 200m track. Cars may be assigned to follow any of the track's six lanes and will be informed of their lane assignment the morning of the race. Lanes are numbered from left to right as shown in the image below.
+The Race to the Moon will take place on the entire Johnson track loop. This is a standard-size 200m track. Cars may be assigned to follow any of the track's six lanes and will be informed of their lane assignment the morning of the race. Lanes are numbered from left to right as shown in the image below.
 
 <!-- <img src="media/final_race.PNG" width="300" /> -->
 <img src="media/start_area.jpg" width="400"/>
 
 Your car's task is to complete the 200-meter loop around the track as fast as possible, while staying in your assigned lane. Any kind of collision (with another car or with something in Johnson) will be penalized heavily. You should have some kind of safety controller running on your car, but be careful that this doesn't stop your car if there is another car driving next to it on the track!
+
+We have provided images and rosbags of the race track in `/racetrack_images` for easier testing/debugging. 
 
 ### Race Day
 On race day, multiple teams will set up on the track at the same time. A TA will give the start signal, at which point the race begins! You must have a member of your team closely follow your car along the track with the controller ready to take manual control at any moment (yes, a great opportunity to exercise). Your car's split will be recorded at the finish line, and TAs will also be stationed at various points along the track recording lane breaches, if they occur (but hopefully no collisions). Each team will have the opportunity to race **three** times, and we will take the best score.
