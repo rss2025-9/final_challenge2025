@@ -99,22 +99,22 @@ When grading the Technical approach and Experimental evaluation portions of your
 
 **For numerical evidence, we would like to see**:
 - Numerical evaluation of the success of your lane tracking + following
-  - Make sure to mention your method for finding the lane and tuning the controller to closely track it
-- Numerical evidence evaluating the success of your shrink ray heist algorithm
+  - Make sure to mention your method for finding the lane and tuning the controller
+- Numerical evidence evaluating the success of your shrink ray heist algorithm (i.e., stopping for TAs, avoiding obstacles, stopping at traffic lights)
 
 ## Part A: Shrink Ray Heist
 
 ### Environment and Task
 
-The Shrink Ray Heist will take place in Vector's fortress (stata basement).
+The Shrink Ray Heist will take place in Vector's fortress (Stata basement).
 
-Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a representive map of Vector's lair, and the 2 locations where the parts are located. The exact configuration of locations and surveillance signals are a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
+Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a representative map of Vector's lair. On the map, stars represent possible shrink ray locations. There are 3 stars, but you only need to navigate to 2. You don't know which 2 points until race day (sneaky Vector moves his shrink ray parts around). The exact configuration of locations and surveillance signals is a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
 
-Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in ``/shrink_ray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it.
+Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in `/shrink_ray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it.
 
 Here are the details of the challenge:
 
-* You will be given 2 locations on the stata basement map (TA's will click 2 points in rviz briefly before you head off)
+* You will be given 2 locations on the Stata basement map (TA's will click 2 points in rviz briefly before you head off)
 * You must detect the correct part and each location and "pick it up" (stop for 5 seconds)
 * You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
 * You should escape Vector's fortress and return to the starting location
@@ -126,16 +126,16 @@ Things to note:
 
 ### Tips
 
-The Shrink Ray Heist is meant to be open-ended. You should make use of whatever techniques you believe will best solve the problem.
+The Shrink Ray Heist is meant to be open-ended. You should make use of techniques you believe will best solve the problem.
 
 Here are some things you may consider in developing your approach:
 
-- How do you implement the high-level logic that puts together localization, path-planning, object detection, and collision avoidance?
+- How do you implement the high-level logic that combines localization, path-planning, object detection, and collision avoidance?
   - Perhaps a state machine would be helpful--how would you connect the different tasks?
 - How should the speed of your car be adjusted as you detect person/obstacle/light, decide it is close enough, and turn corners?
-- The shrink ray detector is good, but not perfect. What other features might you consider looking for to succesfully choose the correct part? 
+- The shrink ray detector is good, but not perfect. What other features might you consider looking for to successfully choose the correct part? 
 
-As always, your safety controller should be turned on for this portion of the Final Challenge as well.
+As always, your safety controller should be turned on for this portion of the Final Challenge.
 
 ## Part B: Race to the Moon
 
@@ -146,9 +146,11 @@ The Race to the Moon will take place on the entire Johnson track loop. This is a
 <!-- <img src="media/final_race.PNG" width="300" /> -->
 <img src="media/start_area.jpg" width="400"/>
 
-Your car's task is to complete the 200-meter loop around the track as fast as possible, while staying in your assigned lane. Any kind of collision (with another car or with something in Johnson) will be penalized heavily. You should have some kind of safety controller running on your car, but be careful that this doesn't stop your car if there is another car driving next to it on the track!
+Your car's task is to complete the 200-meter loop around the track as fast as possible, while staying in your assigned lane. Any kind of collision (with another car or with something in Johnson) will be penalized heavily. You should have a safety controller running on your car, but be careful that this doesn't stop your car if there is another car driving next to it on the track!
 
 We have provided images and rosbags of the race track in `/racetrack_images` for easier testing/debugging. 
+
+The rosbag can be downloaded at this link [**TODO** rosbag link](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
 
 ### Race Day!
 On race day, multiple teams will set up on the track at the same time. A TA will give the start signal, at which point the race begins! You must have a member of your team closely follow your car along the track with the controller ready to take manual control at any moment (yes, a great opportunity to exercise). Your car's split will be recorded at the finish line, and TAs will also be stationed at various points along the track recording lane breaches, if they occur (but hopefully no collisions). Each team will have the opportunity to race **three** times, and we will take the best score.
