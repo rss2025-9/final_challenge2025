@@ -3,7 +3,7 @@
 | Race Day | Saturday, May 10th 9AM - 4PM EST |
 | Code Pushed to Github  | Saturday, May 10th 1PM EST |
 | Briefing (15 min presentation + 5 min Q&A) OR Report (on team github pages website) | Monday, May 5th at 1:00PM EST |
-| [Team Member Assessment](https://forms.gle/z4t7jNufTrGH2JX58)  | Monday, May 12th at 11:59PM EST |
+| [Team Member Assessment](https://forms.gle/FuwuAduxHc7Q8iQz6)  | Saturday, May 10th at 11:59PM EST |
 
 # Final Challenge 2025
 
@@ -15,9 +15,9 @@ This semester, you've learned how to implement real-time robotics software on a 
 
 Now, your team will apply everything you’ve learned to engineer the perfect moon-stealing contraption and out-race your fellow minions to the finish!
 
-<img src="media/despicable_me_moon.png" width="400"/>
+<img src="media/despicable_me_moon.png" width="500"/>
 
-### 3, 2, 1, GO! (should change this)
+### Minions… to the moon!
 
 You have been perfecting your racecar for the last 3 months. Now, it's time to test your supervillain skills! Each team is a group of minions, and you have a task: to steal the moon! There will be two parts to this mission -- first, committing grand larceny by succesfully stealing the shrink ray from Vector, and second, becoming the fastest minion team to reach the moon. 
   - In Shrink Ray Heist, you will need to navigate safely through Vector's supervillian treacherous fortress filled with obstacles to steal the shrink ray
@@ -55,7 +55,7 @@ Formula for Penalties:
 
 `detections` is the number of times you trigger Vector's security system. There are a couple ways that can happen:
 
-Security Zones: These zones are patrolled by guards (TAs walking back and forth). You’ll need to navigate through them without hitting the guard. Otherwise, your operation might be in trouble.
+Security Zones: These zones are patrolled by guards (TAs walking back and forth). You’ll need to navigate through them without hitting the guard; otherwise, your operation might be in trouble.
 
 Surveillance: The signal lights will help you time your movements with the fortress’s surveillance blind spots. Running a red light might alert Vector of your heist!
 
@@ -85,13 +85,13 @@ As you can see from this grading scheme, it is possible to receive bonus points 
 
 **UPDATE!! Your team may choose to complete either a final briefing or a final report.**
 
-### Briefing Evaluation (see [technical briefing rubric](https://docs.google.com/document/d/1lnxUxRZfNqjPTQJviE9lZXZeJRkjo0jgXVWDIRKn3zA/edit?usp=sharing) for grading details)
+### Briefing Evaluation (see [technical briefing rubric](https://canvas.mit.edu/courses/31106/assignments/385210) for grading details)
 When grading the Technical approach and Experimental evaluation portions of your briefing, we will be looking specifically for **illustrative videos of your car following the track lane and as well as executing heist maneuvers.** Specifically, we would like videos highlighting:
 - Visualization of lane / marker tracking and stable drive control within a lane
 - Recovery of your car if it is outside of its assigned track lane
 - Successful path-planning and obstacle avoidance through the course
 
-### Report Evaluation (see [technical report rubric](https://docs.google.com/document/d/1YJQaLDbQkK_40tjnyvpr7shmo--zybM3aPJEfBUtxuw/edit?usp=sharing) for grading details)
+### Report Evaluation (see [technical report rubric](https://canvas.mit.edu/courses/31106/assignments/393140) for grading details)
 When grading the Technical approach and Experimental evaluation portions of your report, we will be looking specifically for the following items:
 
 - **Numerical evidence that your algorithms work in the form of charts/data**
