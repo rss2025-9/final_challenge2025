@@ -158,7 +158,7 @@ Here are some things you may consider in developing your approach:
 
 Please note that Hough Transforms will very likely be useful; helpful resources are [here](https://towardsdatascience.com/lines-detection-with-hough-transform-84020b3b1549) and here(https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html).
 
-### Heist Day!
+# Heist Day!
 
 ## General Notes
 
