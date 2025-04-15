@@ -2,7 +2,8 @@
 |---------------|----------------------------------------------------------------------------|
 | Race Day | Saturday, May 10th 9AM - 4PM EST |
 | Code Pushed to Github  | Saturday, May 10th 1PM EST |
-| Briefing (15 min presentation + 5 min Q&A) OR Report (on team github pages website) | Monday, May 5th at 1:00PM EST |
+| Briefing Slides | Monday, May 5th at 1PM EST |
+| Briefing (15 min presentation + 5 min Q&A) | One of May 5, 7, 12 |
 | [Team Member Assessment](https://forms.gle/FuwuAduxHc7Q8iQz6)  | Saturday, May 10th at 11:59PM EST |
 
 # Final Challenge 2025
@@ -31,7 +32,7 @@ Luckily, through RSS, you’ve learned everything you need to become the ultimat
 |---------------|----------------------------------------------------------------------------|
 | Part A: Shrink Ray Heist (out of 100) | 25% |
 | Part B: Race to the Moon (out of 100) | 35% |
-| Briefing OR Report Grade (out of 10) | 40% |
+| Briefing Grade (out of 10) | 40% |
 
 ### Part A: Shrink Ray Heist
 
@@ -81,24 +82,20 @@ Where `penalties` is calculated as follows:
 
 As you can see from this grading scheme, it is possible to receive bonus points for a very fast and precise solution. The **maximum speed of your car should be capped at 4 m/s**; you should be able to get full points (with bonus!) with a good controller. You should, above all, prioritize avoiding collisions, and if your car leaves its lane, it should quickly recover. More information about race day can be found below in this handout.
 
-## Briefing and Report
-
-**UPDATE!! Your team may choose to complete either a final briefing or a final report.**
+## Briefing
 
 ### Briefing Evaluation (see [technical briefing rubric](https://canvas.mit.edu/courses/31106/assignments/385210) for grading details)
-When grading the Technical approach and Experimental evaluation portions of your briefing, we will be looking specifically for **illustrative videos of your car following the track lane and as well as executing heist maneuvers.** Specifically, we would like videos highlighting:
+When grading the Technical approach and Experimental evaluation portions of your briefing, we will be looking specifically for **illustrative videos of your car following the track lane and as well as executing heist maneuvers** and **numerical evidence that your algorithms work** 
+
+**For videos, we would like to see**:
 - Visualization of lane / marker tracking and stable drive control within a lane
 - Recovery of your car if it is outside of its assigned track lane
 - Successful path-planning and obstacle avoidance through the course
 
-### Report Evaluation (see [technical report rubric](https://canvas.mit.edu/courses/31106/assignments/393140) for grading details)
-When grading the Technical approach and Experimental evaluation portions of your report, we will be looking specifically for the following items:
-
-- **Numerical evidence that your algorithms work in the form of charts/data**
-  - Numerical evaluation of the success of your lane tracking + following
-    - Make sure to mention your method for finding the lane and tuning the controller to closely track it.
-  - Numerical evidence evaluating the success of your shrink ray heist algorithm
-    - Make sure to mention your method for recognizing 
+**For numerical evidence, we would like to see**:
+- Numerical evaluation of the success of your lane tracking + following
+  - Make sure to mention your method for finding the lane and tuning the controller to closely track it
+- Numerical evidence evaluating the success of your shrink ray heist algorithm
 
 ## Part A: Shrink Ray Heist
 
