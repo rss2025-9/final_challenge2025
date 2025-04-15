@@ -103,7 +103,7 @@ When grading the Technical approach and Experimental evaluation portions of your
 **For numerical evidence, we would like to see**:
 - Numerical evaluation of the success of your lane tracking + following
   - Make sure to mention your method for finding the lane and tuning the controller
-- Numerical evidence evaluating the success of your shrink ray heist algorithm (e.g., stopping for TAs, avoiding obstacles, stopping at surviellance lights)
+- Numerical evidence evaluating the success of your shrink ray heist algorithm (e.g., stopping distance, deviation from planned path, convergence time, etc)
 
 ## Part A: Shrink Ray Heist
 
