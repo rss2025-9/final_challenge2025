@@ -42,7 +42,7 @@ Part A is worth 25% of your Final Challenge technical grade. You get 3 attempts 
 
 `Part A grade = heist_score - penalties`
 
-Heist Scoring:
+**Heist Scoring:**
 
 Vector has disassembled the shrink ray into two parts and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
 
@@ -50,7 +50,7 @@ For each location, you’ll earn 30 points for reaching there, 10 points for pic
 
 `heist_score = 10*(pickup1 + pickup2 + identify1 + identify2) + 30*(loc1 + loc2) + 20*loc1*loc2*start`
 
-Formula for Penalties: 
+**Formula for Penalties:**
 
 `penalties =  min(5 * detections, 30) + 10 * manual_assist`
 
@@ -73,6 +73,11 @@ The formula for calculating score and penalty values may change for fairness (pe
 Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
 
   `Part B grade = min(100 + (50 - best_race_split), 110) - penalties`
+
+**Race Scoring**
+-- add something here
+
+**Formula for Penalties**
 
 Where `penalties` is calculated as follows:
 
