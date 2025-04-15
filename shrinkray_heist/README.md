@@ -35,4 +35,11 @@ with
 model = Detector(from_tensor_rt=False)
 model.to('cuda')
 ```
-As a sanity check, the model should run at about 10FPS. 
+As a sanity check, the model should run at about 10FPS. We also recommend you increase the power mode of the Orin:
+```bash
+# to check the current power mode
+sudo nvpmodel -q
+
+# to change to MAXN mode
+sudo nvpmodel -m 0
+``` 
