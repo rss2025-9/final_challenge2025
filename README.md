@@ -1,18 +1,17 @@
 | Deliverable | Due Date              |
 |---------------|----------------------------------------------------------------------------|
-| Race Day | Saturday, May 10th 9AM - 24M EST |
+| Race Day | Saturday, May 10th 9AM - 4PM EST |
 | Code Pushed to Github  | Saturday, May 10th 1PM EST |
-| Briefing (15 min presentation + 5 min Q&A) OR Report ([github pages](https://github.mit.edu/rss/website2021)) | Monday, May 5th at 1:00PM EST (NB: deadline is for briefing slides, briefings are from 3-5pm) |
+| Briefing (15 min presentation + 5 min Q&A) OR Report (on team github pages website) | Monday, May 5th at 1:00PM EST |
 | [Team Member Assessment](https://forms.gle/z4t7jNufTrGH2JX58)  | Monday, May 12th at 11:59PM EST |
 
 # Final Challenge 2025
-
 
 ## Introduction
 
 Congratulations on completing the six labs of RSS! 
 
-This semester, you've learned how to implement real-time robotics software on a widely-used software framework (ROS). You know how to read sensor data (LIDAR, Camera, Odometry) and convert it into a useful representation of the world (homography, localization). You've written algorithms which make plans over the world's state (parking, line following, path planning) and couple with controllers (PD control, pure pursuit) to accomplish tasks. 
+This semester, you've learned how to implement real-time robotics software on a widely-used software framework (ROS). You know how to read sensor data (LiDAR, Camera, Odometry) and convert it into a useful representation of the world (homography, localization). You've written algorithms that make plans over the world's state (parking, line following, path planning) and combined them with controllers (PD control, pure pursuit) to accomplish tasks. 
 
 Now, your team will apply everything you’ve learned to engineer the perfect moon-stealing contraption and out-race your fellow minions to the finish!
 
@@ -20,19 +19,18 @@ Now, your team will apply everything you’ve learned to engineer the perfect mo
 
 ### 3, 2, 1, GO! (should change this)
 
-You have been perfecting your racecar for the last 3 months. Now, it's time to test your supervillain skills! Each team is a group of minions, and you have a task: to steal the moon! There will be two parts to this mission -- first, comitting grand larceny by succesfully stealing the shrinkray from Vector, and second, becoming the fast Minion team to reach the moon. 
-  - In Shrinkray Heist, you will need to navigate safely through Vector's supervillian treacherous fortress filled with obstacles to steal the shrink ray 
-  - In the Race to the Moon, your team will go head-to-head with other teams to be the fastest to reach the Moon without falling off the track
+You have been perfecting your racecar for the last 3 months. Now, it's time to test your supervillain skills! Each team is a group of minions, and you have a task: to steal the moon! There will be two parts to this mission -- first, committing grand larceny by succesfully stealing the shrink ray from Vector, and second, becoming the fastest minion team to reach the moon. 
+  - In Shrink Ray Heist, you will need to navigate safely through Vector's supervillian treacherous fortress filled with obstacles to steal the shrink ray
+  - In the Race to the Moon, your team will go head-to-head with other teams to be the fastest to reach the moon without falling off the track
     
 Luckily, through RSS, you’ve learned everything you need to become the ultimate supervillains!
-
 
 ## Grading
 
 | Deliverable  Grade | Weighting             |
 |---------------|----------------------------------------------------------------------------|
-| Part A: Shrink Ray Heist  | 25% |
-| Part B: Race to the Moon (out of 100)  | 35% |
+| Part A: Shrink Ray Heist (out of 100) | 25% |
+| Part B: Race to the Moon (out of 100) | 35% |
 | Briefing OR Report Grade (out of 10) | 40% |
 
 ### Part A: Shrink Ray Heist
@@ -47,17 +45,17 @@ Heist Scoring:
 
 Vector has disassembled the shrink ray into two parts and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
 
-You’ll earn 30 points for reaching each location, and uou’ll earn 20 points for correctly identifying and picking up each part. If you return to your starting point after pulling off the heist, you’ll receive a bonus 20 points. There will be plenty of obstacles along the way, so plan carefully!
+For each location, you’ll earn 30 points for reaching there, 10 points for picking up either the decoy or the shrink ray part, and 10 points for correctly identifying the shrink ray. If you successfully escape Vector's fortress, you’ll receive 20 points (making the maximum number of points above 100!). There will be plenty of obstacles along the way, so plan carefully...
 
-`heist_score = 20*(shrinrk_ray_part1 + shrinrk_ray_part2) + 30*(location1 + location) + 20*(L1^L2^Start)`
+`heist_score = 10*(pickup1 + pickup2 + identify1 + identify2) + 30*(loc1 + loc2) + 20*loc1*loc2*start`
 
-Formula for Penalities: 
+Formula for Penalties: 
 
-`penalties =  min(5 * detections, 30) + 10 * manual_assist + 10 * incorrect_parts`
+`penalties =  min(5 * detections, 30) + 10 * manual_assist`
 
 `detections` is the number of times you trigger Vector's security system. There are a couple ways that can happen:
 
-Security Zones: These zones are patrolled by guards (TAs walking back and forth). You’ll need to navigate through them without hitting the guard-otherwise, your operation might be in trouble.
+Security Zones: These zones are patrolled by guards (TAs walking back and forth). You’ll need to navigate through them without hitting the guard. Otherwise, your operation might be in trouble.
 
 Surveillance: The signal lights will help you time your movements with the fortress’s surveillance blind spots. Running a red light might alert Vector of your heist!
 
@@ -67,21 +65,19 @@ The maximum penalty you can recieve for detections is 30 points.
 
 The `manual_assist` is the number of maneuvers (counted individually for turning a corner, stopping before a light, resetting a car, etc.) that required manual teleop intervention. 10 points will be docked for each assist.
 
-`incorrect_parts` will be the number of decoy parts picked up (in place of the real component). This has a maximum penalty of 20 points.
-
-The formula for calculating score and penalty values may change for fairness (Penalties may be decreased in severity for a clearly functioning solution, for example).
+The formula for calculating score and penalty values may change for fairness (penalties may be decreased in severity for a clearly functioning solution, for example).
 
 ### Part B: Race to the Moon
 
 Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
 
-  `Part B grade = min(100 + (50 - best_race_split), 110)  - penalties`
+  `Part B grade = min(100 + (50 - best_race_split), 110) - penalties`
 
 Where `penalties` is calculated as follows:
 
   `penalties = 15 * num_collisions + 5 * num_lane_line_breaches + 5 * num_long_breaches`
   
-And `num_lane_line_breaches` is the number of times the car drives outside of either lane line, and `num_long_breaches` is the number of times the car has driven outside of its lane and stayed outside of the lane for greater than 3 seconds.
+`num_lane_line_breaches` is the number of times the car drives outside of either lane line, and `num_long_breaches` is the number of times the car has driven outside of its lane and stayed outside of the lane for greater than 3 seconds.
 
 As you can see from this grading scheme, it is possible to receive bonus points for a very fast and precise solution. The **maximum speed of your car should be capped at 4 m/s**; you should be able to get full points (with bonus!) with a good controller. You should, above all, prioritize avoiding collisions, and if your car leaves its lane, it should quickly recover. More information about race day can be found below in this handout.
 
@@ -112,14 +108,14 @@ The Shrink Ray Heist will take place in Vector's fortress (stata basement).
 
 Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a representive map of Vector's lair, and the 2 locations where the parts are located. The exact configuration of locations and surveillance signals are a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
 
-Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in /shrink_ray_heist)! It not only tells you if there is a shrink ray part in camera view, but which one is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it.
+Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in ``/shrink_ray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it.
 
 Here are the details of the challenge:
 
 * You will be given 2 locations on the stata basement map (TA's will click 2 points in rviz briefly before you head off)
 * You must detect the correct part and each location and "pick it up" (stop for 5 seconds)
 * You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
-* If you return to the start with the reassembled shrinkray, you'll receive bonus points
+* You should escape Vector's fortress and return to the starting location
 
 Things to note: 
 * Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points.
@@ -166,7 +162,6 @@ Here are some things you may consider in developing your approach:
 Please note that Hough Transforms will very likely be useful; helpful resources are [here](https://towardsdatascience.com/lines-detection-with-hough-transform-84020b3b1549) and here(https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html).
 
 ### Heist Day!
-
 
 ## General Notes
 
