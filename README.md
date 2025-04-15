@@ -44,7 +44,7 @@ Part A is worth 25% of your Final Challenge technical grade. You get 3 attempts 
 
 **Heist Scoring:**
 
-Vector has disassembled the shrink ray into two parts and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
+Vector has disassembled the shrink ray into two parts, turned them into **bananas**, and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
 
 For each location, you’ll earn 30 points for reaching there, 10 points for picking up either the decoy or the shrink ray part, and 10 points for correctly identifying the shrink ray. If you successfully escape Vector's fortress, you’ll receive 20 points (making the maximum number of points above 100!). There will be plenty of obstacles along the way, so plan carefully...
 
@@ -70,14 +70,15 @@ The formula for calculating score and penalty values may change for fairness (pe
 
 ### Part B: Race to the Moon
 
-<img src="media/minions-driving.png" width="400"/>
+<img src="media/minions-driving.jpg" width="400"/>
 
 Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
 
   `Part B grade = min(100 + (50 - best_race_split), 110) - penalties`
 
 **Race Scoring**
--- add something here
+
+`best_race_split` will be the fastest of your three runs in seconds.
 
 **Formula for Penalties**
 
@@ -102,7 +103,7 @@ When grading the Technical approach and Experimental evaluation portions of your
 **For numerical evidence, we would like to see**:
 - Numerical evaluation of the success of your lane tracking + following
   - Make sure to mention your method for finding the lane and tuning the controller
-- Numerical evidence evaluating the success of your shrink ray heist algorithm (i.e., stopping for TAs, avoiding obstacles, stopping at traffic lights)
+- Numerical evidence evaluating the success of your shrink ray heist algorithm (e.g., stopping for TAs, avoiding obstacles, stopping at surviellance lights)
 
 ## Part A: Shrink Ray Heist
 
@@ -152,7 +153,7 @@ Your car's task is to complete the 200-meter loop around the track as fast as po
 
 We have provided images and rosbags of the race track in `/racetrack_images` for easier testing/debugging. 
 
-The rosbag can be downloaded at this [link](https://drive.google.com/file/d/1laqouQzSVUhgAsqJVQ08WQdYrOwvVxg0/view?usp=sharing)
+The rosbag can be downloaded at this link [**TODO** rosbag link](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
 
 ### Race Day!
 On race day, multiple teams will set up on the track at the same time. A TA will give the start signal, at which point the race begins! You must have a member of your team closely follow your car along the track with the controller ready to take manual control at any moment (yes, a great opportunity to exercise). Your car's split will be recorded at the finish line, and TAs will also be stationed at various points along the track recording lane breaches, if they occur (but hopefully no collisions). Each team will have the opportunity to race **three** times, and we will take the best score.
