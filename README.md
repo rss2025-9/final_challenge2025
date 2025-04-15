@@ -3,7 +3,7 @@
 | Race Day | Saturday, May 10th 9AM - 4PM EST |
 | Code Pushed to Github  | Saturday, May 10th 1PM EST |
 | Briefing Slides | Monday, May 5th at 1PM EST |
-| Briefing (15 min presentation + 5 min Q&A) | One of May 5, 7, 12 |
+| Briefing (15 min presentation + 5 min Q&A) | May 5th, 7th, or 12th at 3PM EST |
 | [Team Member Assessment](https://forms.gle/FuwuAduxHc7Q8iQz6)  | Saturday, May 10th at 11:59PM EST |
 
 # Final Challenge 2025
