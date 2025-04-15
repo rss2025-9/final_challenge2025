@@ -145,7 +145,7 @@ Your car's task is to complete the 200-meter loop around the track as fast as po
 
 We have provided images and rosbags of the race track in `/racetrack_images` for easier testing/debugging. 
 
-### Race Day
+### Race Day!
 On race day, multiple teams will set up on the track at the same time. A TA will give the start signal, at which point the race begins! You must have a member of your team closely follow your car along the track with the controller ready to take manual control at any moment (yes, a great opportunity to exercise). Your car's split will be recorded at the finish line, and TAs will also be stationed at various points along the track recording lane breaches, if they occur (but hopefully no collisions). Each team will have the opportunity to race **three** times, and we will take the best score.
 
 ### Tips
@@ -157,8 +157,6 @@ Here are some things you may consider in developing your approach:
 - How can you detect if the car has drifted into a neighboring lane?
 
 Please note that Hough Transforms will very likely be useful; helpful resources are [here](https://towardsdatascience.com/lines-detection-with-hough-transform-84020b3b1549) and here(https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html).
-
-# Heist Day!
 
 ## General Notes
 
