@@ -6,9 +6,19 @@
 | Briefing (15 min presentation + 5 min Q&A) | May 5th, 7th, or 12th at 3PM EST |
 | [Team Member Assessment](https://forms.gle/FuwuAduxHc7Q8iQz6)  | Saturday, May 10th at 11:59PM EST |
 
+## Table of Contents
+
+* [Introduction](https://github.com/mit-rss/final_challenge2025#introduction)
+    * [Grading](https://github.com/mit-rss/final_challenge2025#grading)
+* [Shrink Ray Heist](https://github.com/mit-rss/final_challenge2025#parta)
+* [Race to the Moon](https://github.com/mit-rss/final_challenge2025#partb)
+* [Briefing](https://github.com/mit-rss/final_challenge2025#Briefing)
+* [General Notes](https://github.com/mit-rss/final_challenge2025#general_notes)
+* [FAQ](https://github.com/mit-rss/final_challenge2025#faq)
+
 # Final Challenge 2025
 
-## Introduction
+### Introduction
 
 Congratulations on completing the six labs of RSS! 
 
@@ -26,7 +36,7 @@ You have been perfecting your racecar for the last 3 months. Now, it's time to t
     
 Luckily, through RSS, you’ve learned everything you need to become the ultimate supervillains!
 
-## Grading
+### Grading
 
 | Deliverable  Grade | Weighting             |
 |---------------|----------------------------------------------------------------------------|
@@ -34,7 +44,7 @@ Luckily, through RSS, you’ve learned everything you need to become the ultimat
 | Part B: Race to the Moon (out of 100) | 35% |
 | Briefing Grade (out of 10) | 40% |
 
-### Part A: Shrink Ray Heist
+## Part A: Shrink Ray Heist <a name="parta"></a>
 
 <img src="media/vector.png" width="150"/>
 
@@ -42,7 +52,7 @@ Part A is worth 25% of your Final Challenge technical grade. You get 3 attempts 
 
 `Part A grade = heist_score - penalties`
 
-**Heist Scoring:**
+### Scoring:
 
 Vector has disassembled the shrink ray into two parts, turned them into **bananas**, and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
 
@@ -68,44 +78,6 @@ The `manual_assist` is the number of maneuvers (counted individually for turning
 
 The formula for calculating score and penalty values may change for fairness (penalties may be decreased in severity for a clearly functioning solution, for example).
 
-### Part B: Race to the Moon
-
-<img src="media/minions-driving.jpg" width="400"/>
-
-Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
-
-  `Part B grade = min(100 + (50 - best_race_split), 110) - penalties`
-
-**Race Scoring**
-
-`best_race_split` will be the fastest of your three runs in seconds.
-
-**Formula for Penalties**
-
-Where `penalties` is calculated as follows:
-
-  `penalties = 15 * num_collisions + 5 * num_lane_line_breaches + 5 * num_long_breaches`
-  
-`num_lane_line_breaches` is the number of times the car drives outside of either lane line, and `num_long_breaches` is the number of times the car has driven outside of its lane and stayed outside of the lane for greater than 3 seconds.
-
-As you can see from this grading scheme, it is possible to receive bonus points for a very fast and precise solution. The **maximum speed of your car should be capped at 4 m/s**; you should be able to get full points (with bonus!) with a good controller. You should, above all, prioritize avoiding collisions, and if your car leaves its lane, it should quickly recover. More information about race day can be found below in this handout.
-
-## Briefing
-
-### Briefing Evaluation (see [technical briefing rubric](https://canvas.mit.edu/courses/31106/assignments/385210) for grading details)
-When grading the Technical approach and Experimental evaluation portions of your briefing, we will be looking specifically for **illustrative videos of your car following the track lane and as well as executing heist maneuvers** and **numerical evidence that your algorithms work** 
-
-**For videos, we would like to see**:
-- Visualization of lane / marker tracking and stable drive control within a lane
-- Recovery of your car if it is outside of its assigned track lane
-- Successful path-planning and obstacle avoidance through the course
-
-**For numerical evidence, we would like to see**:
-- Numerical evaluation of the success of your lane tracking + following
-  - Make sure to mention your method for finding the lane and tuning the controller
-- Numerical evidence evaluating the success of your shrink ray heist algorithm (e.g., stopping distance, deviation from planned path, convergence time, etc)
-
-## Part A: Shrink Ray Heist
 
 ### Environment and Task
 
@@ -140,7 +112,10 @@ Here are some things you may consider in developing your approach:
 
 As always, your safety controller should be turned on for this portion of the Final Challenge.
 
-## Part B: Race to the Moon
+
+## Part B: Race to the Moon <a name="partb"></a>
+
+<img src="media/minions-driving.jpg" width="400"/>
 
 ### Environment and Task
 
@@ -155,6 +130,24 @@ We have provided images and rosbags of the race track in `/racetrack_images` for
 
 The rosbag can be downloaded at this link [**TODO** rosbag link](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
 
+Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
+
+  `Part B grade = min(100 + (50 - best_race_split), 110) - penalties`
+
+### Scoring
+
+`best_race_split` will be the fastest of your three runs in seconds.
+
+**Formula for Penalties**
+
+Where `penalties` is calculated as follows:
+
+  `penalties = 15 * num_collisions + 5 * num_lane_line_breaches + 5 * num_long_breaches`
+  
+`num_lane_line_breaches` is the number of times the car drives outside of either lane line, and `num_long_breaches` is the number of times the car has driven outside of its lane and stayed outside of the lane for greater than 3 seconds.
+
+As you can see from this grading scheme, it is possible to receive bonus points for a very fast and precise solution. The **maximum speed of your car should be capped at 4 m/s**; you should be able to get full points (with bonus!) with a good controller. You should, above all, prioritize avoiding collisions, and if your car leaves its lane, it should quickly recover. More information about race day can be found below in this handout.
+
 ### Race Day!
 On race day, multiple teams will set up on the track at the same time. A TA will give the start signal, at which point the race begins! You must have a member of your team closely follow your car along the track with the controller ready to take manual control at any moment (yes, a great opportunity to exercise). Your car's split will be recorded at the finish line, and TAs will also be stationed at various points along the track recording lane breaches, if they occur (but hopefully no collisions). Each team will have the opportunity to race **three** times, and we will take the best score.
 
@@ -167,6 +160,21 @@ Here are some things you may consider in developing your approach:
 - How can you detect if the car has drifted into a neighboring lane?
 
 Please note that Hough Transforms will very likely be useful; helpful resources are [here](https://towardsdatascience.com/lines-detection-with-hough-transform-84020b3b1549) and [here](https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html).
+
+## Briefing
+
+### Briefing Evaluation (see [technical briefing rubric](https://canvas.mit.edu/courses/31106/assignments/385210) for grading details)
+When grading the Technical approach and Experimental evaluation portions of your briefing, we will be looking specifically for **illustrative videos of your car following the track lane and as well as executing heist maneuvers** and **numerical evidence that your algorithms work** 
+
+**For videos, we would like to see**:
+- Visualization of lane / marker tracking and stable drive control within a lane
+- Recovery of your car if it is outside of its assigned track lane
+- Successful path-planning and obstacle avoidance through the course
+
+**For numerical evidence, we would like to see**:
+- Numerical evaluation of the success of your lane tracking + following
+  - Make sure to mention your method for finding the lane and tuning the controller
+- Numerical evidence evaluating the success of your shrink ray heist algorithm (e.g., stopping distance, deviation from planned path, convergence time, etc)
 
 ## General Notes
 
