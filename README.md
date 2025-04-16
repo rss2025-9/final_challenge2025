@@ -111,8 +111,8 @@ As always, your safety controller should be turned on for this portion of the Fi
 
 **Staff Recommendations Vector’s Lair**
 
-1. PRIORITIZE CAREFULLY! Successful navigation is critical to the success of your heist, so you may want to start there
-2. Test often and early-use unit tests to your advantage (test each module prior to integration), and make sure you test in all areas of the map 
+1. PRIORITIZE CAREFULLY! Successful navigation is critical to the success of your heist, so you may want to start there...
+2. Test often and early. Use unit tests to your advantage (test each module prior to integration), and make sure you test in all areas of the map 
 3. If dividing up the modules between teammates, make sure you are coordinating the data types for inputs and outputs of the modules.
 
 If you have trouble getting accurate localization, consider:
