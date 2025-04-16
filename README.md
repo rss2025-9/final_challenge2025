@@ -113,7 +113,7 @@ The Shrink Ray Heist will take place in Vector's fortress (Stata basement).
 
 Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a map of Vector's lair with the two shrink ray locations. The exact configuration of locations and surveillance signals is a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
 
-Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in `/shrink_ray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it. The documentation can be found [here]()
+Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in `/shrink_ray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it. The documentation can be found [here](shrink_ray_heist/README.md)
 
 Here are the details of the challenge:
 
