@@ -40,8 +40,8 @@ Luckily, through RSS, you’ve learned everything you need to become the ultimat
 
 | Deliverable  Grade | Weighting             |
 |---------------|----------------------------------------------------------------------------|
-| Part A: Shrink Ray Heist (out of 100) | 25% |
-| Part B: Race to the Moon (out of 100) | 35% |
+| Part A: Shrink Ray Heist (out of 10) | 25% |
+| Part B: Race to the Moon (out of 10) | 35% |
 | Briefing Grade (out of 10) | 40% |
 
 ## Part A: Shrink Ray Heist <a name="parta"></a>
@@ -74,13 +74,13 @@ Things to note:
 
 ### Scoring:
 
-For each location, you’ll earn 30 points for reaching there, 10 points for picking up either the decoy or the shrink ray part, and 10 points for correctly identifying the shrink ray. If you successfully escape Vector's fortress, you’ll receive 20 points (making the maximum number of points above 100!). There will be plenty of obstacles along the way, so plan carefully...
+You will recieve 3 points for each location you successfully reach. At each location, you will recieve 1 point for picking up either the decoy or the shrink ray part, and 1 point for correctly identifying the correct part. If you successfully escape Vector's fortress, you’ll receive 2 bonus points. There will be plenty of obstacles along the way, so plan carefully...
 
-`heist_score = 10*(pickup1 + pickup2 + identify1 + identify2) + 30*(loc1 + loc2) + 20*loc1*loc2*start`
+`heist_score = 1*(pickup1 + pickup2 + identify1 + identify2) + 3*(loc1 + loc2) + 2*loc1*loc2*start`
 
 **Formula for Penalties:**
 
-`penalties =  min(5 * detections, 30) + 10 * manual_assist`
+`penalties =  min(5 * detections, 3) + 1 * manual_assist`
 
 `detections` is the number of times you trigger Vector's security system. There are a couple ways that can happen:
 
@@ -90,9 +90,9 @@ Surveillance: The signal lights will help you time your movements with the fortr
 
 Obstacles: Various defenses have been scattered throughout the fortress to block your path. Plan your path carefully so you don't get stuck in them.
 
-The maximum penalty you can recieve for detections is 30 points.
+The maximum penalty you can recieve for detections is 3 points.
 
-The `manual_assist` is the number of maneuvers (counted individually for turning a corner, stopping before a light, resetting a car, etc.) that required manual teleop intervention. 10 points will be docked for each assist.
+The `manual_assist` is the number of maneuvers (counted individually for turning a corner, stopping before a light, resetting a car, etc.) that required manual teleop intervention. 1 point will be docked for each assist.
 
 The formula for calculating score and penalty values may change for fairness (penalties may be decreased in severity for a clearly functioning solution, for example).\
 
@@ -111,23 +111,14 @@ As always, your safety controller should be turned on for this portion of the Fi
 
 **Staff Recommendations Vector’s Lair**
 
-1. PRIORITIZE CAREFULLY! The most significant challenge is navigation. You must maintain an accurate position around the entire map. Nothing else matters if your robot can’t get where it needs to be!
-2. Test often and early. Test in all areas around the Stata basement – some areas are less feature-rich than others.
-3. One step at a time – devise unit tests to validate each module’s output, publishing rate, etc. Be careful not to waste time on integration tests when individual modules don’t work.
-4. If dividing up the modules between teammates, decide on the data type for inputs and outputs of the modules. Uniform input and output make integration MUCH easier. 
+1. PRIORITIZE CAREFULLY! Successful navigation is critical to the success of your heist, so you may want to start there
+2. Test often and early-use unit tests to your advantage (test each module prior to integration), and make sure you test in all areas of the map 
+3. If dividing up the modules between teammates, make sure you are coordinating the data types for inputs and outputs of the modules.
 
 If you have trouble getting accurate localization, consider:
-   1. Is your particle filter running fast enough (20+ Hz)? Be careful as you add more computational load to your robot.
-   2. Tuning motion model noise independently in x, y, and theta axes
-   3. If your particle filter is struggling in a featureless hallway, why should you increase motion model noise?
-   4. Is the odometry data you’re receiving accurate?
-   5. How are you resampling your particles? Are few particles being sampled (with replacement) many times? Should you resample if your particles are spread out enough?
-   6. Consider “squashing” your probability distribution as described in the Lab 5 README
-   7. Tune the number of particles
-   
-   
-
-
+   1. Tuning motion model noise independently for x, y, and theta (in areas with fewer features, consider increasing the noise ...)
+   2. How are you resampling your particles? Are enough particles being sampled? Are they adequately spread out?
+   3. Consider “squashing” your probability distribution as described in the Lab 5 README
 
 ## Part B: Race to the Moon <a name="partb"></a>
 
@@ -140,7 +131,7 @@ The Race to the Moon will take place on the entire Johnson track loop. This is a
 <!-- <img src="media/final_race.PNG" width="300" /> -->
 <img src="media/start_area.jpg" width="400"/>
 
-Your car's task is to complete the 200-meter loop around the track as fast as possible, while staying in your assigned lane. Any kind of collision (with another car or with something in Johnson) will be penalized heavily. You should have a safety controller running on your car, but be careful that this doesn't stop your car if there is another car driving next to it on the track!
+Your car's task is to complete the 200-meter loop around the track as fast as possible, while staying in your assigned lane. Any kind of collision (with another car or with something in Johnson) will seriously jeapordize your mission, and will be penalized heavily. You should have a safety controller running on your car, but be careful that this doesn't stop your car if there is another car driving next to it on the track!
 
 We have provided images and rosbags of the race track in `/racetrack_images` for easier testing/debugging. 
 
@@ -148,7 +139,7 @@ The rosbag can be downloaded at this [link](https://drive.google.com/file/d/1laq
 
 Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
 
-  `Part B grade = min(100 + (50 - best_race_split), 110) - penalties`
+  `Part B grade = min(10 + (5 - best_race_split/10), 11) - penalties`
 
 ### Scoring
 
@@ -158,7 +149,7 @@ Part B is worth 35% of your Final Challenge technical grade. Your grade will be 
 
 Where `penalties` is calculated as follows:
 
-  `penalties = 15 * num_collisions + 5 * num_lane_line_breaches + 5 * num_long_breaches`
+  `penalties = 1.5 * num_collisions + 0.5 * num_lane_line_breaches + 0.5 * num_long_breaches`
   
 `num_lane_line_breaches` is the number of times the car drives outside of either lane line, and `num_long_breaches` is the number of times the car has driven outside of its lane and stayed outside of the lane for greater than 3 seconds.
 
