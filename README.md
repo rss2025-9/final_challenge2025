@@ -54,7 +54,7 @@ Part A is worth 25% of your Final Challenge technical grade. You get 3 attempts 
 
 ### Environment and Task
 
-The Shrink Ray Heist will take place in Vector's fortress (Stata basement).
+The Shrink Ray Heist will take place in Vector's fortress (Stata basement). Vector has disassembled the shrink ray into two parts, turned them into **bananas**, and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
 
 Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a map of Vector's lair with the two shrink ray locations. The exact configuration of locations and surveillance signals is a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
 
@@ -73,8 +73,6 @@ Things to note:
 <img src="media/Final Challenge City Driving Map.png" width="400"/>
 
 ### Scoring:
-
-Vector has disassembled the shrink ray into two parts, turned them into **bananas**, and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
 
 For each location, you’ll earn 30 points for reaching there, 10 points for picking up either the decoy or the shrink ray part, and 10 points for correctly identifying the shrink ray. If you successfully escape Vector's fortress, you’ll receive 20 points (making the maximum number of points above 100!). There will be plenty of obstacles along the way, so plan carefully...
 
