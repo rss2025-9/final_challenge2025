@@ -111,6 +111,23 @@ Here are some things you may consider in developing your approach:
 
 As always, your safety controller should be turned on for this portion of the Final Challenge.
 
+**Staff Recommendations Vector’s Lair**
+
+1. PRIORITIZE CAREFULLY! The most significant challenge is navigation. You must maintain an accurate position around the entire map. Nothing else matters if your robot can’t get where it needs to be!
+2. Test often and early. Test in all areas around the Stata basement – some areas are less feature-rich than others.
+
+If you have trouble getting accurate localization, consider:
+   1. Is your particle filter running fast enough (20+ Hz)? Be careful as you add more computational load to your robot.
+   2. Tuning motion model noise independently in x, y, and theta axes
+   3. If your particle filter is struggling in a featureless hallway, why should you increase motion model noise?
+   4. Is the odometry data you’re receiving accurate?
+   5. How are you resampling your particles? Are few particles being sampled (with replacement) many times? Should you resample if your particles are spread out enough?
+   6. Consider “squashing” your probability distribution as described in the Lab 5 README
+   7. Tune the number of particles
+   
+3. One step at a time – devise unit tests to validate each module’s output, publishing rate, etc. Be careful not to waste time on integration tests when individual modules don’t work.
+4. If dividing up the modules between teammates, decide on the data type for inputs and outputs of the modules. Uniform input and output make integration MUCH easier. 
+
 
 ## Part B: Race to the Moon <a name="partb"></a>
 
