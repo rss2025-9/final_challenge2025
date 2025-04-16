@@ -26,7 +26,7 @@ which will save the output image with bounding boxes (as below) to `model/demo_o
 
 **Fun Fact**: Gru has no patience for sluggish models, so he harnessed TensorRT’s quantization and optimizations to supercharge yours! If you're curious / want to learn more about how he did it, check out [this](https://developer.nvidia.com/tensorrt#:~:text=NVIDIA%C2%AE%20TensorRT%E2%84%A2%20is,high%20throughput%20for%20production%20applications) and [this](https://huggingface.co/docs/optimum/en/concept_guides/quantization) as a reference.
 
-As a reference, the model should run at about 20FPS. We also recommend you increase the power mode of the Orin:
+We recommend you increase the power mode of the Orin:
 
 ```bash
 # to check the current power mode
@@ -51,3 +51,5 @@ with
 model = Detector(from_tensor_rt=False)
 model.to('cuda')
 ```
+
+For context, the model should run at about 20FPS. 
