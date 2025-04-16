@@ -127,7 +127,7 @@ Your car's task is to complete the 200-meter loop around the track as fast as po
 
 We have provided images and rosbags of the race track in `/racetrack_images` for easier testing/debugging. 
 
-The rosbag can be downloaded at this link [**TODO** rosbag link](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+The rosbag can be downloaded at this [link](https://drive.google.com/file/d/1laqouQzSVUhgAsqJVQ08WQdYrOwvVxg0/view?usp=sharing)
 
 Part B is worth 35% of your Final Challenge technical grade. Your grade will be calculated based on the time your car takes to drive around the track (`best_race_split`, in seconds) as follows:
 
