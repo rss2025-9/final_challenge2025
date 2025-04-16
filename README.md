@@ -31,7 +31,7 @@ Now, your team will apply everything you’ve learned to engineer the perfect mo
 ### Minions… to the moon!
 
 You have been perfecting your racecar for the last 3 months. Now, it's time to test your supervillain skills! Each team is a group of minions, and you have a task: to steal the moon! There will be two parts to this mission -- first, committing grand larceny by succesfully stealing the shrink ray from Vector, and second, becoming the fastest minion team to reach the moon. 
-  - In Shrink Ray Heist, you will need to navigate safely through Vector's supervillian treacherous fortress filled with obstacles to steal the shrink ray
+  - In Shrink Ray Heist, you will need to navigate safely through Vector's supervillain treacherous fortress filled with obstacles to steal the shrink ray
   - In the Race to the Moon, your team will go head-to-head with other teams to be the fastest to reach the moon without falling off the track
     
 Luckily, through RSS, you’ve learned everything you need to become the ultimate supervillains!
