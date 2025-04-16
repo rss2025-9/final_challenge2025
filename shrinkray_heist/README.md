@@ -40,6 +40,12 @@ As a sanity check, the model should run at about 10FPS. We also recommend you in
 # to check the current power mode
 sudo nvpmodel -q
 
-# to change to MAXN mode
-sudo nvpmodel -m 0
+# to change to MAXN_SUPER mode
+sudo nvpmodel -m 2
+
+# confirm with
+sudo nvpmodel -q
+
+# reboot
+sudo reboot
 ``` 
