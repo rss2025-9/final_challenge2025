@@ -162,7 +162,7 @@ Please note that Hough Transforms will very likely be useful; helpful resources 
 
 ## Briefing
 
-### Briefing Evaluation (see [technical briefing rubric](https://canvas.mit.edu/courses/31106/assignments/385210) for grading details)
+### Briefing Evaluation (see [technical briefing rubric](https://canvas.mit.edu/courses/31106/assignments/393200) for grading details)
 When grading the Technical approach and Experimental evaluation portions of your briefing, we will be looking specifically for **illustrative videos of your car following the track lane and as well as executing heist maneuvers** and **numerical evidence that your algorithms work** 
 
 **For videos, we would like to see**:
