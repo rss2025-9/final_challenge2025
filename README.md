@@ -52,6 +52,26 @@ Part A is worth 25% of your Final Challenge technical grade. You get 3 attempts 
 
 `Part A grade = heist_score - penalties`
 
+### Environment and Task
+
+The Shrink Ray Heist will take place in Vector's fortress (Stata basement).
+
+Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a map of Vector's lair with the two shrink ray locations. The exact configuration of locations and surveillance signals is a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
+
+Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in `/shrinkray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it. The documentation can be found [here](shrinkray_heist/README.md)
+
+Here are the details of the challenge:
+
+* You will be given 2 locations from the three possible ones marked on the Stata basement map (TA's will click 2 points in rviz briefly before you head off)
+* You must detect the correct part and each location and "pick it up" (stop for 5 seconds)
+* You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
+* You should escape Vector's fortress and return to the starting location
+
+Things to note: 
+* Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points.
+
+<img src="media/Final Challenge City Driving Map.png" width="400"/>
+
 ### Scoring:
 
 Vector has disassembled the shrink ray into two parts, turned them into **bananas**, and hidden them in separate locations-you’ll need to visit both! Not only that, but to throw off any would-be thieves, he has scattered decoy parts at each site. This means that at each location, you'll need to stop and carefully inspect the parts to find the real components needed to assemble the shrink ray and escape.
@@ -76,28 +96,7 @@ The maximum penalty you can recieve for detections is 30 points.
 
 The `manual_assist` is the number of maneuvers (counted individually for turning a corner, stopping before a light, resetting a car, etc.) that required manual teleop intervention. 10 points will be docked for each assist.
 
-The formula for calculating score and penalty values may change for fairness (penalties may be decreased in severity for a clearly functioning solution, for example).
-
-
-### Environment and Task
-
-The Shrink Ray Heist will take place in Vector's fortress (Stata basement).
-
-Your goal, after finishing the race successfully, is to drive through the maze to 2 TA selected locations to pick up shrink ray parts while avoiding detection along the way. Below is a map of Vector's lair with the two shrink ray locations. The exact configuration of locations and surveillance signals is a secret until Heist day; however, the security zones and the appearance of the real shrink ray parts will not change.
-
-Gru, in his infinite wisdom, has already created a ~ machine learning ~ based shrink ray detector for you (located in `/shrinkray_heist`)! It not only tells you if there is a shrink ray part in camera view, but which is the correct one (nifty!). If you don't use it, Gru will be deeply sad that their hard work went to waste, but you are free to modify the code for the detector and add higher level logic to take advantage of it. The documentation can be found [here](shrinkray_heist/README.md)
-
-Here are the details of the challenge:
-
-* You will be given 2 locations from the three possible ones marked on the Stata basement map (TA's will click 2 points in rviz briefly before you head off)
-* You must detect the correct part and each location and "pick it up" (stop for 5 seconds)
-* You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
-* You should escape Vector's fortress and return to the starting location
-
-Things to note: 
-* Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points.
-
-<img src="media/Final Challenge City Driving Map.png" width="400"/>
+The formula for calculating score and penalty values may change for fairness (penalties may be decreased in severity for a clearly functioning solution, for example).\
 
 ### Tips
 
