@@ -1,0 +1,5 @@
+# Pycache
+__pycache__
+
+# MacOS system files
+.DS_Store
