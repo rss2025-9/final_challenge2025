@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'detector = final_challenge2025.shrinkray_heist.model.detection_node:main',
         ],
     },
 )
