@@ -70,7 +70,7 @@ Here are the details of the challenge:
 Things to note: 
 * Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points.
 
-<img src="media/Final Challenge City Driving Map.png" width="400"/>
+<img src="media/Final Challenge Shrinkray Heist Map.png" width="400"/>
 
 ### Scoring:
 

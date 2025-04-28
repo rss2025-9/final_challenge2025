@@ -7,12 +7,12 @@ class BasementPointPublisher(Node):
     '''
     Node that publishes a list of "shell" points
     Subscribes to the "Publish Point" topic when you click on the map in RViz
-    After 3 points have been chosen, it publishes the 3 points as a PoseArray and resets the array
+    After 2 points have been chosen, it publishes the 2 points as a PoseArray and resets the array
     '''
 
     def __init__(self):
         super().__init__("BasementPointPub")
-        self.publisher = self.create_publisher(PoseArray, "/shell_points", 1)
+        self.publisher = self.create_publisher(PoseArray, "/shrinkray_part", 1)
         self.subscriber = self.create_subscription(PointStamped, "/clicked_point", self.callback, 1)
 
         self.array = []
@@ -24,7 +24,7 @@ class BasementPointPublisher(Node):
         self.get_logger().info(f"Received point: {x}, {y}")
         self.array.append(Pose(position=Point(x=x, y=y, z=0.0)))
         
-        if len(self.array) == 3:
+        if len(self.array) == 2:
             self.publish()
 
     def publish(self):
@@ -36,7 +36,7 @@ class BasementPointPublisher(Node):
 
         # Print to Command Line
         points_str = '\n'+'\n'.join([f"({p.position.x},{p.position.y})" for p in self.array])
-        self.get_logger().info(f"Published 3 points: {points_str}")
+        self.get_logger().info(f"Published 2 points: {points_str}")
 
         # Reset Array
         self.array = []
