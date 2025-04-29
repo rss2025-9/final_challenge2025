@@ -96,8 +96,8 @@ class LaneDetector(Node):
         center_points = []
         # get an array of center points
         for (xl, yl), (xr, yr) in zip(left_points, right_points):
-            x_center = (xl + xr) // 2
-            y_center = (yl + yr) // 2
+            x_center = (xl + xr) / 2
+            y_center = (yl + yr) / 2
             center_points.append((x_center, y_center))
 
         # publish the center points array in pixel
@@ -127,7 +127,7 @@ class LaneDetector(Node):
                 return max(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
             # choose the line with minimum mid_x for right lines
             if side == "right":
-                return max(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
+                return min(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
             
 
 def main(args=None):
