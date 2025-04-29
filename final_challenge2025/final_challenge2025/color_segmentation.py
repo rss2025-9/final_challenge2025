@@ -43,8 +43,8 @@ def cd_color_segmentation(img, template):
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for orange color
-	lower_bound = np.array([0, 0, 200])	# hue, saturation (intensity), value (brightness)
-	upper_bound = np.array([179, 255, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
+	lower_bound = np.array([0, 0, 160])	# hue, saturation (intensity), value (brightness)
+	upper_bound = np.array([179, 80, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
 	mask = cv2.inRange(hsv_object, lower_bound, upper_bound)
@@ -55,6 +55,9 @@ def cd_color_segmentation(img, template):
 	# Erosion and dilation
 	eroded_mask = cv2.erode(mask, kernel, iterations=1)
 	dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=2)
+
+	# filter out the unwanted color
+	result = cv2.bitwise_and(cropped_img, cropped_img, mask=dilated_mask)
 	
     # Edge detection
 	# takes img, lower threshold, upper threshold, order of the Sobel filter (larger value detect more detailed features)
@@ -62,10 +65,21 @@ def cd_color_segmentation(img, template):
 	
     # Line detection
 	# rho is in pixels, theta is in radians
-	lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=20, maxLineGap=10)
+	lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=15, maxLineGap=10)
 	
-	# filter out the unwanted color
-	# result = cv2.bitwise_and(img, img, mask=dilated_mask)
+	filtered_lines = []
+	threshold_angle = 23	# in degrees (tune this value if needed)
+	for line in lines:
+		x1, y1, x2, y2 = line[0]
+		dx = x2 - x1
+		dy = y2 - y1
+		if dx == 0:		# vertical line
+			angle = 90
+		else:
+			angle = abs(np.degrees(np.arctan2(dy, dx)))	# angle in degrees
+		
+		if angle > threshold_angle:
+			filtered_lines.append([[x1, y1, x2, y2]])
 	
     # draw the line
 	# if lines is not None: 
@@ -81,4 +95,4 @@ def cd_color_segmentation(img, template):
 	# cv2.destroyAllWindows()
 
 	# Return lines and y-coordinate of the cropped image
-	return lines, crop_y_start
+	return filtered_lines, crop_y_start, result
