@@ -18,15 +18,18 @@ for filename in image_filenames:
         continue
 
     # Run color segmentation
-    bounding_boxes = cd_color_segmentation(img, None)
+    lines, crop_y_start = cd_color_segmentation(img, None)
 
-    # Draw all bounding boxes
-    for (xmin, ymin), (xmax, ymax) in bounding_boxes:
-        if (xmin, ymin) != (0, 0) or (xmax, ymax) != (0, 0):
-            cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+    # Draw the lines
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            y1 += crop_y_start
+            y2 += crop_y_start
+            cv2.line(img, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
     # Show the result
-    cv2.imshow("Segmented Image", img)
+    cv2.imshow("Detected Lines", img)
     key = cv2.waitKey(0)  # Press any key to go to the next image
     if key == ord('q'):
         break

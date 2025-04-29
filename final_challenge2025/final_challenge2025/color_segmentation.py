@@ -7,7 +7,7 @@ import numpy as np
 #  Y
 #
 #  v  This is the image. Y increases downwards, X increases rightwards
-#  v  Please return bounding boxes as ((xmin, ymin), (xmax, ymax))
+#  v  
 #  v
 #  v
 #  v
@@ -25,24 +25,29 @@ def image_print(img):
 
 def cd_color_segmentation(img, template):
 	"""
-	Implement the cone detection using color segmentation algorithm
+	Implement the object detection using color segmentation algorithm
 	Input:
-		img: np.3darray; the input image with a cone to be detected. BGR.
+		img: np.3darray; the input image with an object to be detected. BGR.
 		template_file_path; Not required, but can optionally be used to automate setting hue filter values.
 	Return:
 		bbox: ((x1, y1), (x2, y2)); the bounding box of the cone, unit in px
 				(x1, y1) is the top left of the bbox and (x2, y2) is the bottom right of the bbox
 	"""
-	########## YOUR CODE STARTS HERE ##########
+
+	# crop the image to focus on the lower half
+	height = img.shape[0]
+	crop_y_start = height // 2  # crop down the image (tune this to crop more)
+	cropped_img = img[crop_y_start:, :, :]  # y, x, channel
+
 	# convert the image from RGB to HSV
-	hsv_cone = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for orange color
 	lower_bound = np.array([0, 0, 200])	# hue, saturation (intensity), value (brightness)
 	upper_bound = np.array([179, 255, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
-	mask = cv2.inRange(hsv_cone, lower_bound, upper_bound)
+	mask = cv2.inRange(hsv_object, lower_bound, upper_bound)
 
 	# Matrix of size 3 as a kernel
 	kernel = np.ones((3, 3), np.uint8)
@@ -57,31 +62,23 @@ def cd_color_segmentation(img, template):
 	
     # Line detection
 	# rho is in pixels, theta is in radians
-	lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=50, maxLineGap=10)
-
+	lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=20, maxLineGap=10)
+	
 	# filter out the unwanted color
-	result = cv2.bitwise_and(img, img, mask=dilated_mask)
-
-	contours, _ = cv2.findContours(dilated_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-	bounding_boxes = []
-	for contour in contours:
-		if cv2.contourArea(contour) > 150:
-			x, y, w, h = cv2.boundingRect(contour)
-			# For line-following.
-			if y < 150:
-				continue
-			cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
-			bounding_boxes.append(((x, y), (x + w, y + h)))
-
-	if bounding_boxes is None:
-		bounding_boxes = [((0, 0), (0, 0))]
+	# result = cv2.bitwise_and(img, img, mask=dilated_mask)
+	
+    # draw the line
+	# if lines is not None: 
+	# 	for line in lines:
+	# 		x1, y1, x2, y2 = line[0]
+	# 		y1 += crop_y_start
+	# 		y2 += crop_y_start
+	# 		cv2.line(img, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
 	# cv2.imshow("Segmented Output", result)
-	cv2.imshow("image", img)
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
+	# cv2.imshow("image", img)
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
 
-	########### YOUR CODE ENDS HERE ###########
-
-	# Return bounding box
-	return bounding_boxes
+	# Return lines and y-coordinate of the cropped image
+	return lines, crop_y_start
