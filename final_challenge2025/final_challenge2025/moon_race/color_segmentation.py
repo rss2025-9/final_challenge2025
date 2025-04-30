@@ -30,14 +30,14 @@ def cd_color_segmentation(img, template):
 
 	# crop the image to focus on the lower half
 	height = img.shape[0]
-	crop_y_start = height // 3  # crop down the image (tune this to crop more)
+	crop_y_start = 2 * height // 5  # crop down the image (tune this to crop more)
 	cropped_img = img[crop_y_start:, :, :]  # y, x, channel
 
 	# convert the image from RGB to HSV
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for orange color
-	lower_bound = np.array([30, 2, 135])	# hue, saturation (intensity), value (brightness)
+	lower_bound = np.array([40, 2, 145])	# hue, saturation (intensity), value (brightness)
 	upper_bound = np.array([255, 30, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
@@ -64,7 +64,7 @@ def cd_color_segmentation(img, template):
 	)
 	
 	filtered_lines = []
-	threshold_angle = 20	# in degrees (tune this value if needed)
+	threshold_angle = 15	# in degrees (tune this value if needed)
 	for line in lines:
 		x1, y1, x2, y2 = line[0]
 		dx = x2 - x1

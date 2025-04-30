@@ -52,10 +52,10 @@ from geometry_msgs.msg import Pose, Point
 
 ######################################################
 ## DUMMY POINTS -- ENTER YOUR MEASUREMENTS HERE
-# PTS_IMAGE_PLANE = [[287, 312],
-#                    [466, 310],
-#                    [411, 255],
-#                    [292, 254]] # dummy points
+PTS_IMAGE_PLANE = [[287, 312],
+                   [466, 310],
+                   [411, 255],
+                   [292, 254]] # dummy points
 ######################################################
 
 # PTS_GROUND_PLANE units are in inches
@@ -63,32 +63,33 @@ from geometry_msgs.msg import Pose, Point
 
 ######################################################
 ## DUMMY POINTS -- ENTER YOUR MEASUREMENTS HERE
-# PTS_GROUND_PLANE = [[12.5, 2],
-#                     [12.5, -5.5],
-#                     [20.5, -5.5],
-#                     [20.5, 2]] # dummy points
+PTS_GROUND_PLANE = [[12.5, 2],
+                    [12.5, -5.5],
+                    [20.5, -5.5],
+                    [20.5, 2]] # dummy points
 ######################################################
 
-PTS_IMAGE_PLANE = [[323, 211], 
-                    [370, 314], 
-                    [18, 294], 
-                    [465, 209], 
-                    [42, 18.5],
-                    [466, 310], 
-                    [411, 355]]
-PTS_GROUND_PLANE = [[42, 0], 
-                    [14, -2.25], 
-                    [16, 51], 
-                    [42, 18.5],
-                    [134, 0],
-                    [12.5, -5.5], 
-                    [20.5, -5.5]]
+# PTS_IMAGE_PLANE = [[323, 211], 
+#                     [370, 314], 
+#                     [18, 294], 
+#                     [465, 209], 
+#                     [42, 18.5],
+#                     [466, 310], 
+#                     [411, 355]]
+# PTS_GROUND_PLANE = [[42, 0], 
+#                     [14, -2.25], 
+#                     [16, 51], 
+#                     [42, 18.5],
+#                     [134, 0],
+#                     [12.5, -5.5], 
+#                     [20.5, -5.5]]
 
 METERS_PER_INCH = 0.0254
 
 class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
+        self.extension = 8
 
         self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
@@ -128,6 +129,10 @@ class HomographyTransformer(Node):
         # Averages the start and end points to create a midline.
         mid_start = (left_start + right_start) / 2
         mid_end = (left_end + right_end) / 2
+        # Extends the midline to extension.
+        mid_vec = mid_end - mid_start
+        mid_vec /= np.linalg.norm(mid_vec)
+        mid_end = mid_start + self.extension * mid_vec
 
         relative_traj.poses.extend([
             Pose(

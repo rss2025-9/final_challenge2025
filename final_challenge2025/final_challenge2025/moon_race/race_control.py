@@ -45,7 +45,7 @@ class PurePursuit(Node):
         assert self.max_deviation > 0, "Lane buffer is too large for the lane width."
 
         # Refresh rate of the controller.
-        self.declare_parameter('refresh_rate', 0.001)
+        self.declare_parameter('refresh_rate', 0.005)
         self.refresh_rate: float = self.get_parameter('refresh_rate').get_parameter_value().double_value
         # Timer to call the timer callback at a fixed rate.
         self.timer = self.create_timer(self.refresh_rate, self.timer_callback)
@@ -188,18 +188,19 @@ class PurePursuit(Node):
                 closest_idx, traj_pts, distances
             )
 
-        # If the deviation is significant, turn harder to the side.
-        if np.abs(self.deviation) > self.max_deviation:
-            # Gets how far into the red we are from the safe lane zone.
-            deviation_delta: float = np.abs(self.deviation) - self.max_deviation
-            # Feeds the deviation delta into a tanh function to get a bounded correction.
-            correction: float = np.tanh((
-                np.sign(self.deviation) * deviation_delta
-            ) / self.max_deviation)
-            # Applies the correction to the goal point.
-            goal_point[1] += correction
-            # Renormalizes to the distance of the lookahead.
-            goal_point *= self.lookahead / np.linalg.norm(goal_point)
+        # # If the deviation is significant, turn harder to the side.
+        # correction: float = 0.0
+        # if np.abs(self.deviation) > self.max_deviation:
+        #     # Gets how far into the red we are from the safe lane zone.
+        #     deviation_delta: float = np.abs(np.abs(self.deviation) - self.max_deviation)
+        #     # Feeds the deviation delta into a tanh function to get a bounded correction.
+        #     correction = np.tanh((
+        #         np.sign(self.deviation) * deviation_delta
+        #     ) / self.max_deviation)
+        #     # Applies the correction to the goal point.
+        #     goal_point[1] += correction
+        #     # Renormalizes to the distance of the lookahead.
+        #     goal_point *= self.lookahead / np.linalg.norm(goal_point)
 
         # Calculate the curvature 
         gamma: float = 2 * goal_point[1] / (self.lookahead ** 2)
@@ -218,7 +219,7 @@ class PurePursuit(Node):
         self.publish_drive_cmd(speed, steering_angle)
 
         # Update the trajectory given the commanded motion.
-        self.real_time_kinematics(steering_angle, speed)
+        self.real_time_kinematics(steering_angle, speed) 
 
     def trajectory_callback(self, msg: WorldTrajInfo):
         """
