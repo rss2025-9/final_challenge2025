@@ -25,7 +25,7 @@ class LaneDetector(Node):
         super().__init__("lane_detector")
 
         # Subscribe to ZED camera RGB frames
-        self.lane_pub = self.create_publisher(PoseArray, "/relative_lane_px", 10)
+        self.lane_pub = self.create_publisher(TrajInfo, "/relative_lane_px", 10)
         self.debug_pub = self.create_publisher(Image, "/lane_debug_img", 10)
         self.image_sub = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.image_callback, 5)
         self.bridge = CvBridge() # Converts between ROS images and OpenCV Images
