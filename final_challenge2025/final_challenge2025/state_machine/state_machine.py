@@ -75,6 +75,7 @@ class StateMachineNode(Node):
         self.create_subscription(PoseArray, '/shrinkray_part', self.goals_cb, 1)
         self.create_subscription(PoseStamped, '/initialpose', self.pose_cb, 1)
         self.create_subscription(String, '/traffic_light/state', self.traffic_cb, 1)
+        self.create_subscription(DetectionArray, '/yolo/detections', self.detection_cb, 1)
         self.create_timer(0.1, self.on_timer)
 
         # moving parts 
@@ -93,6 +94,10 @@ class StateMachineNode(Node):
         self.get_logger().info(f'Received goals: {self.goals}')
         if len(self.goals) == 2 and self.state == HeistState.IDLE:
             self.state = HeistState.PLAN_TRAJ1
+
+    # detection callback: YOLO detections
+    # def detection_cb(self, msg: TODO):
+    #     pass # TODO: add to detections list 
 
     # State machine 
     def on_timer(self):
@@ -130,10 +135,14 @@ class StateMachineNode(Node):
             if self.any_detection('banana'):
                 self.get_logger().info('Banana seen #1')
                 self.state = HeistState.IDENTIFY1
+            else: 
+                pass 
+                # TODO: sweep around to find banana
 
         elif self.state == HeistState.IDENTIFY1:
             if self.any_detection('banana'):
                 self.get_logger().info('Identified banana #1')
+                # TODO: add parking controller to park in front of banana
                 self.state = HeistState.PICKUP1
             else:
                 self.state = HeistState.INSPECT1
@@ -167,9 +176,13 @@ class StateMachineNode(Node):
         elif self.state == HeistState.INSPECT2:
             if self.any_detection('banana'):
                 self.state = HeistState.IDENTIFY2
+            else: 
+                pass
+                # TODO: sweep around to find banana
 
         elif self.state == HeistState.IDENTIFY2:
             if self.any_detection('banana'):
+                # TODO: add parking controller to park in front of banana
                 self.state = HeistState.PICKUP2
             else:
                 self.state = HeistState.INSPECT2
@@ -183,11 +196,6 @@ class StateMachineNode(Node):
         elif self.state == HeistState.ESCAPE:
             self.get_logger().info('Escaping')
             self.planner.plan_path(self.intial_pose.position)
-
-            if not self.detect_green_light():
-                self.state = HeistState.WAIT_TRAFFIC2
-                return
-            
             self.follower.follow_path()
 
             self.state = HeistState.COMPLETE

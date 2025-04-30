@@ -15,6 +15,7 @@ class DetectorNode(Node):
         super().__init__("detector")
         self.detector = Detector()
         self.publisher = self.create_publisher(Image, "/detector/annotated_img", 1)
+        # self.publisher = self.create_publisher(TODO, "/yolo/detections", 1)
         self.subscriber = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.callback, 1)
         self.bridge = CvBridge()
 
