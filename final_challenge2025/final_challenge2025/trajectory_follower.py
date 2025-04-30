@@ -38,20 +38,10 @@ class PurePursuit(Node):
         # Subscribers to the planned path and publishers for the drive command.
         self.trajectory: LineTrajectory = LineTrajectory("/followed_trajectory")
         self.initialized_traj = False
-        # Keeps info on the left and right bounds of the trajectory.
-        self.left_bound: npt.NDArray[np.float64] = None
-        self.right_bound: npt.NDArray[np.float64] = None
-        
-        # We may want to create a unique datastruct that makes this one datatype,
-        # or more ideally compress it by moving the algorithm I implemented in 
-        # the bound detection.
-        self.left_bound_sub = self.create_subscription(
-            PoseArray, "/trajectory/left_bound",
-            self.update_left_bound, 1
-        )
-        self.right_bound_sub = self.create_subscription(
-            PoseArray, "/trajectory/right_bound",
-            self.update_right_bound, 1
+
+        self.midpoint_sub = self.create_subscription(
+            PoseArray, "/trajectory/midpoint",
+            self.trajectory_callback, 1
         )
         self.odom_sub = self.create_subscription(
             Odometry, self.odom_topic,
@@ -178,42 +168,10 @@ class PurePursuit(Node):
         # Publish the drive command.
         self.publish_drive_cmd(speed, steering_angle)
 
-    def update_left_bound(self, msg: PoseArray):
-        self.get_logger().info(f"Receiving new left bound {len(msg.poses)} points")
-        # Converts from poses to a numpy array.
-        left_bound: npt.NDArray[np.float64] = np.array(
-            [(p.position.x, p.position.y) for p in msg.poses]
-        )
-        # Updates the trajectory with the new left bound.
-        self.left_bound = msg
-        self.update_trajectory()
-
-
-    def update_right_bound(self, msg: PoseArray):
-        self.get_logger().info(f"Receiving new right bound {len(msg.poses)} points")
-        # Updates the trajectory with the new right bound.
-        self.right_bound = msg
-        self.update_trajectory()
-
-
-
-    def update_trajectory(self, msg):
-        if self.left_bound is None or self.right_bound is None:
-            self.get_logger().warning("Left or right bound not set, not updating trajectory.")
-            return
-        
-        # Creates a new trajectory.
-        self.trajectory.clear()
-        # Creates a pose array as the average of the interpolated left and right bounds.
-        for i in range(len(self.left_bound.poses)):
-            p1: Pose = self.left_bound.poses[i]
-            p2: Pose = self.right_bound.poses[i]
-            p = Pose()
-            p.position.x = (p1.position.x + p2.position.x) / 2
-            p.position.y = (p1.position.y + p2.position.y) / 2
-            self.trajectory.points.append((p.position.x, p.position.y))
-
+    def trajectory_callback(self, msg):
         self.get_logger().info(f"Receiving new trajectory {len(msg.poses)} points")
+
+        self.trajectory.clear()
         # Converts from poses to the utility trajectory class.
         self.trajectory.fromPoseArray(msg)
         self.trajectory.publish_viz(duration=0.0)
