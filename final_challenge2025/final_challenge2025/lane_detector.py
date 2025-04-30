@@ -8,7 +8,8 @@ import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Point, Pose, PoseArray #geometry_msgs not in CMake file
+from geometry_msgs.msg import Point, Pose #geometry_msgs not in CMake file
+from final_interfaces.msg import TrajInfo
 
 # import color segmentation algorithm; call this function in ros_image_callback
 from color_segmentation import cd_color_segmentation
@@ -24,7 +25,7 @@ class LaneDetector(Node):
         super().__init__("lane_detector")
 
         # Subscribe to ZED camera RGB frames
-        self.lane_pub = self.create_publisher(PoseArray, "/relative_lane_px", 10)
+        self.lane_pub = self.create_publisher(TrajInfo, "/relative_lane_px", 10)
         self.debug_pub = self.create_publisher(Image, "/lane_debug_img", 10)
         self.image_sub = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.image_callback, 5)
         self.bridge = CvBridge() # Converts between ROS images and OpenCV Images
@@ -100,8 +101,13 @@ class LaneDetector(Node):
             y_center = (yl + yr) / 2
             center_points.append((x_center, y_center))
 
+        # get the x coordinate of the bottom of the center line
+        bottom_center = max(center_points, key=lambda p: p[1])
+        bottom_center_x = bottom_center[0]
+        deviation = float(img_center_x - bottom_center_x)
+
         # publish the center points array in pixel
-        center_poses = PoseArray()
+        center_poses = TrajInfo()
         center_poses.header.stamp = self.get_clock().now().to_msg()
         center_poses.header.frame_id = "zed_left_camera_frame"
 
@@ -111,6 +117,8 @@ class LaneDetector(Node):
             pose.position.y = float(v)
             pose.position.z = 0.0
             center_poses.poses.append(pose)
+
+        center_poses.deviation = deviation
 
         self.lane_pub.publish(center_poses)
 
