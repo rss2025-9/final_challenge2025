@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="final_challenge2025" exec="safety_controller" name="safety_controller" output="screen">
+    </node>
+</launch>
+

@@ -8,6 +8,7 @@ from .detector import Detector
 import os 
 import numpy as np
 import cv2
+from std_msgs.msg import String
 
 class DetectorNode(Node):
     def __init__(self):
@@ -16,6 +17,8 @@ class DetectorNode(Node):
         self.publisher = self.create_publisher(Image, "/detector/annotated_img", 1)
         self.subscriber = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.callback, 1)
         self.bridge = CvBridge()
+
+        self.tl_pub = self.create_publisher(String, '/traffic_light/state', 1)
 
         self.get_logger().info("Detector Initialized")
 
@@ -37,6 +40,34 @@ class DetectorNode(Node):
 
         # Publish the image
         self.publisher.publish(ros_img)
+        
+        # get traffic state 
+        state = self.check_traffic_light(image, predictions)
+        msg   = String(data=state)
+        self.tl_pub.publish(msg)
+
+    def check_traffic_light(self, frame, preds):
+        for (x1, y1, x2, y2), label in preds:
+            if label == 'traffic_light':
+                x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
+                roi = frame[y1:y2, x1:x2]
+                if roi.size == 0:
+                    continue
+                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                area = roi.shape[0] * roi.shape[1]
+                # red mask (two ranges)
+                m1 = cv2.inRange(hsv, (0,50,50), (10,255,255))
+                m2 = cv2.inRange(hsv, (160,50,50), (180,255,255))
+                red_count = int(cv2.countNonZero(m1) + cv2.countNonZero(m2))
+                # green mask
+                mg = cv2.inRange(hsv, (40,50,50), (90,255,255))
+                green_count = int(cv2.countNonZero(mg))
+                if red_count > 0.1 * area:
+                    return 'RED'
+                if green_count > 0.1 * area:
+                    return 'GREEN'
+                return 'UNKNOWN'
+        return 'NONE'
 
 def main(args=None):
     rclpy.init(args=args)
