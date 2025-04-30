@@ -62,7 +62,7 @@ Gru, in his infinite wisdom, has already created a ~ machine learning ~ based sh
 
 Here are the details of the challenge:
 
-* You will be given 2 locations from the 3 possible ones marked on the Stata basement map (TA's will click 2 points in rviz briefly before you head off)
+* You will be given 2 locations at random via the `basement_point_publisher` node -- see the Stata map for an example of possible locations. We will not assign locations outside of the range of the ones on the map. 
 * You must detect the correct part and each location and "pick it up" (stop for 5 seconds)
 * You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
 * You should escape Vector's fortress and return to the starting location
