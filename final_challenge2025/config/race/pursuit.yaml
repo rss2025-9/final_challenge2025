@@ -1,9 +1,9 @@
-trajectory_follower:
+race_control:
   ros__parameters:
     drive_topic: "/vesc/high_level/input/nav_0"
 
-    lookahead: 0.1
-    speed: 1.0
+    lookahead: 0.5
+    speed: 1.5
     wheelbase_length: 0.3302
 
     lane_width: 0.5

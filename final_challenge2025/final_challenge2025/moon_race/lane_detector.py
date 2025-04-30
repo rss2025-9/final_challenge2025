@@ -9,8 +9,8 @@ from cv_bridge import CvBridge
 import numpy as np
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Pose #geometry_msgs not in CMake file
-from final_interfaces.msg import TrajInfo
+from geometry_msgs.msg import Point #geometry_msgs not in CMake file
+from final_interfaces.msg import Line, LineBounds
 
 # import color segmentation algorithm; call this function in ros_image_callback
 from .color_segmentation import cd_color_segmentation
@@ -26,7 +26,7 @@ class LaneDetector(Node):
         super().__init__("lane_detector")
 
         # Subscribe to ZED camera RGB frames
-        self.lane_pub = self.create_publisher(TrajInfo, "/relative_lane_px", 10)
+        self.lane_pub = self.create_publisher(LineBounds, "/relative_lane_px", 10)
         self.debug_pub = self.create_publisher(Image, "/lane_debug_img", 10)
         self.image_sub = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.image_callback, 5)
         self.bridge = CvBridge() # Converts between ROS images and OpenCV Images
@@ -82,8 +82,13 @@ class LaneDetector(Node):
                 right_lines.append([[x1, y1, x2, y2]])
             
         # get inner left and right lines
-        left_inner_line = self.choose_inner(left_lines, "left")[0]
-        right_inner_line = self.choose_inner(right_lines, "right")[0]
+        left_inner_line = self.choose_inner(left_lines, "left")
+        right_inner_line = self.choose_inner(right_lines, "right")
+
+        if left_inner_line is None or right_inner_line is None:
+            return
+        left_inner_line = left_inner_line[0]
+        right_inner_line = right_inner_line[0]
 
         if left_inner_line:
             self.draw_line(image, left_inner_line, (0, 255, 255))
@@ -91,68 +96,54 @@ class LaneDetector(Node):
         if right_inner_line:
             self.draw_line(image, right_inner_line, (0, 255, 255))
 
-
-        # get equally placed points from left and right lines
-        num_points = 10     # can tune this value
-        center_points = []
-
         # get the start and end points of the left and right lines
-        left_start = np.array(left_inner_line[0:2])
-        left_end = np.array(left_inner_line[2:4])
-        right_start = np.array(right_inner_line[0:2])
-        right_end = np.array(right_inner_line[2:4])
+        left_start = np.array(left_inner_line[0:2], dtype=float)
+        left_end = np.array(left_inner_line[2:4], dtype=float)
+        right_start = np.array(right_inner_line[0:2], dtype=float)
+        right_end = np.array(right_inner_line[2:4], dtype=float)
         
         # From point perspective left vec should be going to the right.
         # From point perspective right vec should be going to the left.
-        left_vec = (left_end - left_start) / num_points
-        right_vec = (right_end - right_start) / num_points
-        if left_vec[0] < 0:
-            left_vec = -left_vec
+        if left_inner_line[0] - left_inner_line[2] < 0:
             left_start, left_end = left_end, left_start
-        if right_vec[0] > 0:
-            right_vec = -right_vec
+        if right_inner_line[0] - right_inner_line[2] > 0:
             right_start, right_end = right_end, right_start
-        
-        for i in range(num_points):
-            # Calculate the left and right line points
-            left_pt = left_start + i * left_vec
-            right_pt = right_start + i * right_vec
-
-            # get the center point of the left and right lines
-            center = (left_pt + right_pt) / 2
-            center_points.append(center)
-
-        # get the x coordinate of the bottom of the center line
-        bottom_center = max(center_points, key=lambda p: p[1])
-        bottom_center_x = bottom_center[0]
-        deviation = float(img_center_x - bottom_center_x)
 
         # publish the center points array in pixel
-        center_poses = TrajInfo()
-        center_poses.header.stamp = self.get_clock().now().to_msg()
-        center_poses.header.frame_id = "zed_left_camera_frame"
+        lane = LineBounds()
+        lane.header.stamp = self.get_clock().now().to_msg()
+        lane.header.frame_id = "zed_left_camera_frame"
+        lane.left = Line(
+            start=Point(
+                x=left_start[0],
+                y=left_start[1]
+            ),
+            end=Point(
+                x=left_end[0],
+                y=left_end[1]
+            )
+        )
+        lane.right = Line(
+            start=Point(
+                x=right_start[0],
+                y=right_start[1]
+            ),
+            end=Point(
+                x=right_end[0],
+                y=right_end[1]
+            )
+        )
+        self.lane_pub.publish(lane)
 
-        for (u, v) in center_points:
-            pose = Pose()
-            pose.position.x = float(u)
-            pose.position.y = float(v)
-            pose.position.z = 0.0
-            center_poses.poses.append(pose)
-
-        center_poses.deviation = deviation
-
-        self.lane_pub.publish(center_poses)
-
-        # publish debugging image
-        for i, (u, v) in enumerate(center_points):
-            cv2.circle(image, (int(u), int(v)), radius=4, color=(i * 10, i * 10, i * 10), thickness=-1)
+        # Prints a debug image for detection.
         debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
         self.debug_pub.publish(debug_msg)
 
     # helper function to choose the inner line of the track
     def choose_inner(self, lines, side):
             if not lines:
-                return None
+                self.get_logger().warning(f"### No line on {side} ###")
+                return
             # choose the line with maximum mid_x for left lines
             if side == "left":
                 return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)

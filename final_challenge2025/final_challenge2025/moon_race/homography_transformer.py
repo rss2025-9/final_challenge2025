@@ -7,8 +7,8 @@ import numpy as np
 import cv2
 
 from visualization_msgs.msg import Marker
-from final_interfaces.msg import TrajInfo, WorldTrajInfo
-from geometry_msgs.msg import Pose
+from final_interfaces.msg import LineBounds, WorldTrajInfo
+from geometry_msgs.msg import Pose, Point
 
 #The following collection of pixel locations and corresponding relative
 #ground plane locations are used to compute our homography matrix
@@ -28,7 +28,8 @@ from geometry_msgs.msg import Pose
 #                    [402, 173], 
 #                    [553, 208], 
 #                    [546, 258],
-#                    [344, 179], # dummy points
+#                    [344, 179],
+#                    # dummy points
 ######################################################
 
 # PTS_GROUND_PLANE units are in inches
@@ -51,10 +52,10 @@ from geometry_msgs.msg import Pose
 
 ######################################################
 ## DUMMY POINTS -- ENTER YOUR MEASUREMENTS HERE
-PTS_IMAGE_PLANE = [[287, 312],
-                   [466, 310],
-                   [411, 255],
-                   [292, 254]] # dummy points
+# PTS_IMAGE_PLANE = [[287, 312],
+#                    [466, 310],
+#                    [411, 255],
+#                    [292, 254]] # dummy points
 ######################################################
 
 # PTS_GROUND_PLANE units are in inches
@@ -62,11 +63,26 @@ PTS_IMAGE_PLANE = [[287, 312],
 
 ######################################################
 ## DUMMY POINTS -- ENTER YOUR MEASUREMENTS HERE
-PTS_GROUND_PLANE = [[12.5, 2],
-                    [12.5, -5.5],
-                    [20.5, -5.5],
-                    [20.5, 2]] # dummy points
+# PTS_GROUND_PLANE = [[12.5, 2],
+#                     [12.5, -5.5],
+#                     [20.5, -5.5],
+#                     [20.5, 2]] # dummy points
 ######################################################
+
+PTS_IMAGE_PLANE = [[323, 211], 
+                    [370, 314], 
+                    [18, 294], 
+                    [465, 209], 
+                    [42, 18.5],
+                    [466, 310], 
+                    [411, 355]]
+PTS_GROUND_PLANE = [[42, 0], 
+                    [14, -2.25], 
+                    [16, 51], 
+                    [42, 18.5],
+                    [134, 0],
+                    [12.5, -5.5], 
+                    [20.5, -5.5]]
 
 METERS_PER_INCH = 0.0254
 
@@ -76,7 +92,7 @@ class HomographyTransformer(Node):
 
         self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
-        self.lane_px_sub = self.create_subscription(TrajInfo, "/relative_lane_px", self.lane_detection_callback, 1)
+        self.lane_px_sub = self.create_subscription(LineBounds, "/relative_lane_px", self.lane_detection_callback, 1)
 
         if not len(PTS_GROUND_PLANE) == len(PTS_IMAGE_PLANE):
             rclpy.logerr("ERROR: PTS_GROUND_PLANE and PTS_IMAGE_PLANE should be of same length")
@@ -96,30 +112,39 @@ class HomographyTransformer(Node):
         self.get_logger().info("Homography Transformer Initialized")
         self.get_logger().info(f"Homography Matrix: \n {self.h}" )
 
-    def lane_detection_callback(self, msg: TrajInfo):
+    def lane_detection_callback(self, msg: LineBounds):
 
         # Create world trajectory message
         relative_traj = WorldTrajInfo()
-        relative_traj.header.stamp = self.get_clock().now().to_msg()
+        relative_traj.header.stamp = msg.header.stamp
         relative_traj.header.frame_id = "zed_left_camera_frame"
 
-        #Extract information from message
-        center_poses_px = msg.poses
+        # Extract information from message
+        left_start = self.transformUvToXy(msg.left.start.x, msg.left.start.y)
+        left_end = self.transformUvToXy(msg.left.end.x, msg.left.end.y)
+        right_start = self.transformUvToXy(msg.right.start.x, msg.right.start.y)
+        right_end = self.transformUvToXy(msg.right.end.x, msg.right.end.y)
 
-        #Call to main function for each point of the trajectory
-        for center_pose_px in center_poses_px:
-            u = center_pose_px.position.x
-            v = center_pose_px.position.y
-            x, y = self.transformUvToXy(u, v)
+        # Averages the start and end points to create a midline.
+        mid_start = (left_start + right_start) / 2
+        mid_end = (left_end + right_end) / 2
 
-            #Publish relative xy position of trajectory in real world
-            relative_xy_pose = Pose()
-            relative_xy_pose.position.x = x
-            relative_xy_pose.position.y = y
-            relative_xy_pose.position.z = 0.0
-            relative_traj.poses.append(relative_xy_pose)
+        relative_traj.poses.extend([
+            Pose(
+                position=Point(
+                    x=mid_start[0],
+                    y=mid_start[1]
+                )
+            ),
+            Pose(
+                position=Point(
+                    x=mid_end[0],
+                    y=mid_end[1]
+                )
+            )
+        ])
 
-        relative_traj.deviation = msg.deviation
+        relative_traj.deviation = mid_start[1]
         self.lane_pub.publish(relative_traj)
 
     def transformUvToXy(self, u, v):
@@ -141,7 +166,7 @@ class HomographyTransformer(Node):
         homogeneous_xy = xy * scaling_factor
         x = homogeneous_xy[0, 0]
         y = homogeneous_xy[1, 0]
-        return x, y
+        return np.array([x, y], dtype=float)
 
     def draw_marker(self, x, y, message_frame):
         """

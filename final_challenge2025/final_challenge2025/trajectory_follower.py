@@ -13,7 +13,7 @@ import numpy.typing as npt
 from .utils import LineTrajectory
 
 # Imports TrajInfo custom message.
-from final_interfaces.msg import TrajInfo
+from final_interfaces.msg import WorldTrajInfo
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
@@ -55,7 +55,7 @@ class PurePursuit(Node):
         self.initialized_traj = False
 
         self.midpoint_sub = self.create_subscription(
-            TrajInfo, "/trajectory/midpoint",
+            WorldTrajInfo, "/trajectory/midpoint",
             self.trajectory_callback, 1
         )
         self.odom_sub = self.create_subscription(
