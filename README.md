@@ -80,7 +80,7 @@ You will recieve 3 points for each location you successfully reach. At each loca
 
 **Formula for Penalties:**
 
-`penalties =  min(5 * detections, 3) + 1 * manual_assist`
+`penalties =  min(0.5 * detections, 3) + 1 * manual_assist`
 
 `detections` is the number of times you trigger Vector's security system. There are a couple ways that can happen:
 
