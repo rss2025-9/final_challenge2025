@@ -115,18 +115,6 @@ class SafetyController(Node):
         brake_msg.drive.steering_angle = 0.0
         self.drive_pub.publish(brake_msg)
         self.get_logger().warn(f"SLOWING DOWN - reducing to {self.step_brake_speed} m/s.")
-    
-    def record_data(self, distance, speed, action):
-        self.safety_controller_data_records.append([round(distance, 2), round(speed, 2), action])
-        self.write_to_csv()
-
-
-    def write_to_csv(self): 
-        with open(self.safety_controller_data, mode='a', newline='') as file: 
-            writer = csv.writer(file)
-            writer.writerows(self.safety_controller_data_records)
-        self.safety_controller_data_records = []
-
 
 
 def main():

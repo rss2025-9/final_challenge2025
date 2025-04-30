@@ -11,7 +11,8 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from ackermann_msgs.msg import AckermannDriveStamped
 from visualization_msgs.msg import Marker
-from vs_msgs.msg import ConeLocation, ConeLocationPixel
+from final_interfaces.msg import TrajInfo, WorldTrajInfo
+from geometry_msgs.msg import Pose
 
 #The following collection of pixel locations and corresponding relative
 #ground plane locations are used to compute our homography matrix
@@ -77,9 +78,9 @@ class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
 
-        self.lane_pub = self.create_publisher(ConeLocation, "/relative_lane", 10)
+        self.lane_pub = self.create_publisher(WorldTrajInfo, "/relative_lane", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
-        self.lane_px_sub = self.create_subscription(ConeLocationPixel, "/relative_lane_px", self.cone_detection_callback, 1)
+        self.lane_px_sub = self.create_subscription(TrajInfo, "/relative_lane_px", self.lane_detection_callback, 1)
 
         if not len(PTS_GROUND_PLANE) == len(PTS_IMAGE_PLANE):
             rclpy.logerr("ERROR: PTS_GROUND_PLANE and PTS_IMAGE_PLANE should be of same length")
@@ -99,22 +100,34 @@ class HomographyTransformer(Node):
         self.get_logger().info("Homography Transformer Initialized")
         self.get_logger().info(f"Homography Matrix: \n {self.h}" )
 
-    def cone_detection_callback(self, msg):
+    def lane_detection_callback(self, msg: TrajInfo):
+
+        # Create world trajectory message
+        relative_traj = WorldTrajInfo()
+        relative_traj.header.stamp = self.get_clock().now().to_msg()
+        relative_traj.header.frame_id = "zed_left_camera_frame"
+
         #Extract information from message
-        u = msg.u
-        v = msg.v
+        center_poses_px = msg.poses
 
-        #Call to main function
-        x, y = self.transformUvToXy(u, v)
+        #Call to main function for each point of the trajectory
+        for center_pose_px in center_poses_px:
+            u = center_pose_px.position.x
+            v = center_pose_px.position.y
+            x, y = self.transformUvToXy(u, v)
 
-        #Publish relative xy position of object in real world
-        relative_xy_msg = ConeLocation()
-        relative_xy_msg.x_pos = x
-        relative_xy_msg.y_pos = y
+            #Publish relative xy position of trajectory in real world
+            relative_xy_pose = Pose()
+            relative_xy_pose.position.x = x
+            relative_xy_pose.position.y = y
+            relative_xy_pose.position.z = 0.0
+            relative_traj.poses.append(relative_xy_pose)
+
+        relative_traj.deviation = msg.deviation
 
         self.draw_marker(x, y, "zed_left_camera_frame")
         self.get_logger().info(f"relative cone positions in real world (meters): {x}, {y}")
-        self.cone_pub.publish(relative_xy_msg)
+        self.lane_pub.publish(relative_traj)
 
     def transformUvToXy(self, u, v):
         """
