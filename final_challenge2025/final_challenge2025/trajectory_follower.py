@@ -13,7 +13,7 @@ import numpy.typing as npt
 from .utils import LineTrajectory
 
 # Imports TrajInfo custom message.
-from final_challenge2025.msg import TrajInfo
+from final_interfaces.msg import TrajInfo
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
