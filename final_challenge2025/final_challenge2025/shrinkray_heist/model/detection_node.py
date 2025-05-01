@@ -8,7 +8,7 @@ from .detector import Detector
 import os 
 import numpy as np
 import cv2
-from std_msgs.msg import String
+from final_interfaces.msg import DetectionStates
 
 class DetectorNode(Node):
     def __init__(self):
@@ -18,9 +18,7 @@ class DetectorNode(Node):
         self.subscriber = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.callback, 1)
         self.bridge = CvBridge()
 
-        self.traffic_light_state = self.create_publisher(String, '/traffic_light/state', 1)
-        self.banana_state = self.create_publisher(String, '/banana/state', 1)
-        self.person_state = self.create_publisher(String, '/person/state', 1)
+        self.states_publisher = self.create_publisher(DetectionStates, "/detector/states", 1)
 
         self.get_logger().info("Detector Initialized")
 
@@ -43,56 +41,47 @@ class DetectorNode(Node):
         # Publish the image
         self.publisher.publish(ros_img)
         
-        # get traffic state 
-        self.check_states(image, predictions)
+        detection_msg = self.check_states(image, predictions)
+        self.states_publisher.publish(detection_msg)
 
     def check_states(self, frame, preds):
+        msg = DetectionStates()
+        msg.traffic_light_state = 'NONE'
+        msg.banana_state = 'NONE'
+        msg.person_state = 'NONE'
         for (x1, y1, x2, y2), label in preds:
+            x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
+            roi = frame[y1:y2, x1:x2]
+            if roi.size == 0:
+                continue
+
             if label == 'traffic_light':
-                x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
-                roi = frame[y1:y2, x1:x2]
-                if roi.size == 0:
-                    continue
                 hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
                 area = roi.shape[0] * roi.shape[1]
-                # red mask (two ranges)
-                m1 = cv2.inRange(hsv, (0,50,50), (10,255,255))
-                m2 = cv2.inRange(hsv, (160,50,50), (180,255,255))
-                red_count = int(cv2.countNonZero(m1) + cv2.countNonZero(m2))
-                # green mask
-                mg = cv2.inRange(hsv, (40,50,50), (90,255,255))
-                green_count = int(cv2.countNonZero(mg))
+                # red
+                m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
+                m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
+                red_count = cv2.countNonZero(m1) + cv2.countNonZero(m2)
+                # green
+                mg = cv2.inRange(hsv, (40, 50, 50), (90, 255, 255))
+                green_count = cv2.countNonZero(mg)
                 if red_count > 0.1 * area:
-                    self.traffic_light_state.publish('RED')
-                if green_count > 0.1 * area:
-                    self.traffic_light_state.publish('GREEN')
+                    msg.traffic_light_state = 'RED'
+                elif green_count > 0.1 * area:
+                    msg.traffic_light_state = 'GREEN'
+
             elif label == 'banana':
-                x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
-                roi = frame[y1:y2, x1:x2]
-                if roi.size == 0:
-                    continue
                 hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
                 area = roi.shape[0] * roi.shape[1]
-                # yellow mask
-                m = cv2.inRange(hsv, (20,50,50), (30,255,255))
-                yellow_count = int(cv2.countNonZero(m))
+                m = cv2.inRange(hsv, (20, 50, 50), (30, 255, 255))
+                yellow_count = cv2.countNonZero(m)
                 if yellow_count > 0.1 * area:
-                    self.banana_state.publish('YELLOW')
-            elif label == 'person': 
-                x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
-                roi = frame[y1:y2, x1:x2]
-                if roi.size == 0:
-                    continue
-                self.person_state.publish('DETECTED')
-            else: 
-                self.traffic_light_state.publish('NONE')
-                self.banana_state.publish('NONE')
-                self.person_state.publish('NONE')
-        # if no detections, also publish NONE
-        if not preds:
-            self.traffic_light_state.publish('NONE')
-            self.banana_state.publish('NONE')
-            self.person_state.publish('NONE')
+                    msg.banana_state = 'DETECTED'
+
+            elif label == 'person':
+                msg.person_state = 'DETECTED'
+
+        return msg
 
 def main(args=None):
     rclpy.init(args=args)
