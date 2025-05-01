@@ -101,107 +101,108 @@ class StateMachineNode(Node):
 
     # State machine 
     def on_timer(self):
-        if self.state == HeistState.IDLE:
-            self.get_logger().info('Waiting for initial pose and goals')
-            if self.intial_pose is not None and len(self.goals) == 2:
-                self.state = HeistState.PLAN_TRAJ1
+        match self.state:
+            case HeistState.IDLE:
+                self.get_logger().info('Waiting for initial pose and goals')
+                if self.intial_pose is not None and len(self.goals) == 2:
+                    self.state = HeistState.PLAN_TRAJ1
 
-        if self.state == HeistState.PLAN_TRAJ1:
-            self.get_logger().info('Planning to goal #1')
-            self.planner.plan_path(self.goals[0])
-            self.state = HeistState.FOLLOW_TRAJ1
-
-        elif self.state == HeistState.FOLLOW_TRAJ1:
-            # check for traffic light
-            if not self.detect_green_light():
-                self.get_logger().info('waiting for green light')
-                self.state = HeistState.WAIT_TRAFFIC1
-                return
-            # normal follow
-            self.follower.follow_path()
-            if self.follower.has_reached_goal():
-                self.get_logger().info('Reached goal #1')
-                self.state = HeistState.INSPECT1
-                self.pickup_time = None
-
-        elif self.state == HeistState.WAIT_TRAFFIC1:
-            # wait until green
-            if self.detect_green_light():
-                self.get_logger().info('Green light, resuming')
-                # back to prior follow state
+            case HeistState.PLAN_TRAJ1:
+                self.get_logger().info('Planning to goal #1')
+                self.planner.plan_path(self.goals[0])
                 self.state = HeistState.FOLLOW_TRAJ1
 
-        elif self.state == HeistState.INSPECT1:
-            if self.any_detection('banana'):
-                self.get_logger().info('Banana seen #1')
-                self.state = HeistState.IDENTIFY1
-            else: 
-                pass 
-                # TODO: sweep around to find banana
+            case HeistState.FOLLOW_TRAJ1:
+                # check for traffic light
+                if not self.detect_green_light():
+                    self.get_logger().info('waiting for green light')
+                    self.state = HeistState.WAIT_TRAFFIC1
+                    return
+                # normal follow
+                self.follower.follow_path()
+                if self.follower.has_reached_goal():
+                    self.get_logger().info('Reached goal #1')
+                    self.state = HeistState.INSPECT1
+                    self.pickup_time = None
 
-        elif self.state == HeistState.IDENTIFY1:
-            if self.any_detection('banana'):
-                self.get_logger().info('Identified banana #1')
-                # TODO: add parking controller to park in front of banana
-                self.state = HeistState.PICKUP1
-            else:
-                self.state = HeistState.INSPECT1
+            case HeistState.WAIT_TRAFFIC1:
+                # wait until green
+                if self.detect_green_light():
+                    self.get_logger().info('Green light, resuming')
+                    # back to prior follow state
+                    self.state = HeistState.FOLLOW_TRAJ1
 
-        elif self.state == HeistState.PICKUP1:
-            if self.pickup_time is None:
-                self.pickup_time = time.time(); self.get_logger().info('Picking up #1')
-            elif time.time() - self.pickup_time > 5.0:
-                self.state = HeistState.PLAN_TRAJ2
+            case HeistState.INSPECT1:
+                if self.any_detection('banana'):
+                    self.get_logger().info('Banana seen #1')
+                    self.state = HeistState.IDENTIFY1
+                else: 
+                    pass 
+                    # TODO: sweep around to find banana
 
-        elif self.state == HeistState.PLAN_TRAJ2:
-            self.get_logger().info('Planning to goal #2')
-            self.planner.plan_path(self.goals[1])
-            self.state = HeistState.FOLLOW_TRAJ2
+            case HeistState.IDENTIFY1:
+                if self.any_detection('banana'):
+                    self.get_logger().info('Identified banana #1')
+                    # TODO: add parking controller to park in front of banana
+                    self.state = HeistState.PICKUP1
+                else:
+                    self.state = HeistState.INSPECT1
 
-        elif self.state == HeistState.FOLLOW_TRAJ2:
-            if not self.detect_green_light():
-                self.state = HeistState.WAIT_TRAFFIC2
-                return
-            self.follower.follow_path()
-            if self.follower.has_reached_goal():
-                self.state = HeistState.INSPECT2; self.pickup_time=None
+            case HeistState.PICKUP1:
+                if self.pickup_time is None:
+                    self.pickup_time = time.time(); self.get_logger().info('Picking up #1')
+                elif time.time() - self.pickup_time > 5.0:
+                    self.state = HeistState.PLAN_TRAJ2
 
-        elif self.state == HeistState.WAIT_TRAFFIC2:
-            # wait until green
-            if self.detect_green_light():
-                self.get_logger().info('Green light, resuming')
-                # back to prior follow state
+            case HeistState.PLAN_TRAJ2:
+                self.get_logger().info('Planning to goal #2')
+                self.planner.plan_path(self.goals[1])
                 self.state = HeistState.FOLLOW_TRAJ2
 
-        elif self.state == HeistState.INSPECT2:
-            if self.any_detection('banana'):
-                self.state = HeistState.IDENTIFY2
-            else: 
-                pass
-                # TODO: sweep around to find banana
+            case HeistState.FOLLOW_TRAJ2:
+                if not self.detect_green_light():
+                    self.state = HeistState.WAIT_TRAFFIC2
+                    return
+                self.follower.follow_path()
+                if self.follower.has_reached_goal():
+                    self.state = HeistState.INSPECT2; self.pickup_time=None
 
-        elif self.state == HeistState.IDENTIFY2:
-            if self.any_detection('banana'):
-                # TODO: add parking controller to park in front of banana
-                self.state = HeistState.PICKUP2
-            else:
-                self.state = HeistState.INSPECT2
+            case HeistState.WAIT_TRAFFIC2:
+                # wait until green
+                if self.detect_green_light():
+                    self.get_logger().info('Green light, resuming')
+                    # back to prior follow state
+                    self.state = HeistState.FOLLOW_TRAJ2
 
-        elif self.state == HeistState.PICKUP2:
-            if self.pickup_time is None:
-                self.pickup_time = time.time(); self.get_logger().info('Picking up #2')
-            elif time.time() - self.pickup_time > 5.0:
-                self.state = HeistState.ESCAPE
+            case HeistState.INSPECT2:
+                if self.any_detection('banana'):
+                    self.state = HeistState.IDENTIFY2
+                else: 
+                    pass
+                    # TODO: sweep around to find banana
 
-        elif self.state == HeistState.ESCAPE:
-            self.get_logger().info('Escaping')
-            self.planner.plan_path(self.intial_pose.position)
-            self.follower.follow_path()
+            case HeistState.IDENTIFY2:
+                if self.any_detection('banana'):
+                    # TODO: add parking controller to park in front of banana
+                    self.state = HeistState.PICKUP2
+                else:
+                    self.state = HeistState.INSPECT2
 
-            self.state = HeistState.COMPLETE
+            case HeistState.PICKUP2:
+                if self.pickup_time is None:
+                    self.pickup_time = time.time(); self.get_logger().info('Picking up #2')
+                elif time.time() - self.pickup_time > 5.0:
+                    self.state = HeistState.ESCAPE
 
-        elif self.state == HeistState.COMPLETE:
-            self.get_logger().info('Heist COMPLETE')
+            case HeistState.ESCAPE:
+                self.get_logger().info('Escaping')
+                self.planner.plan_path(self.intial_pose.position)
+                self.follower.follow_path()
+
+                self.state = HeistState.COMPLETE
+
+            case HeistState.COMPLETE:
+                self.get_logger().info('Heist COMPLETE')
 
 def main(args=None):
     rclpy.init(args=args)
