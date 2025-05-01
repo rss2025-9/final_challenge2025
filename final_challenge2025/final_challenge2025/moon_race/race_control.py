@@ -12,15 +12,15 @@ import numpy.typing as npt
 
 from .utils import LineTrajectory
 
-# Imports TrajInfo custom message.
-from final_interfaces.msg import TrajInfo
+# Imports WorldTrajInfo custom message.
+from final_interfaces.msg import WorldTrajInfo
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
     """
 
     def __init__(self):
-        super().__init__("trajectory_follower")
+        super().__init__("race_trajectory_follower")
         # Topics to be used.
         self.declare_parameter('drive_topic', "default")
         self.drive_topic: str = self.get_parameter('drive_topic').get_parameter_value().string_value
@@ -57,7 +57,7 @@ class PurePursuit(Node):
         self.initialized_traj = False
 
         self.midpoint_sub = self.create_subscription(
-            TrajInfo, "/trajectory/midpoint",
+            WorldTrajInfo, "/trajectory/midpoint",
             self.trajectory_callback, 1
         )
         self.drive_pub = self.create_publisher(
@@ -199,7 +199,7 @@ class PurePursuit(Node):
 
 
 
-    def trajectory_callback(self, msg):
+    def trajectory_callback(self, msg: WorldTrajInfo):
         """
         Sets a new trajectory to follow.
         """

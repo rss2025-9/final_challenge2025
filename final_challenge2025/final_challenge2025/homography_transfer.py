@@ -78,7 +78,7 @@ class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
 
-        self.lane_pub = self.create_publisher(WorldTrajInfo, "/relative_lane", 10)
+        self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
         self.lane_px_sub = self.create_subscription(TrajInfo, "/relative_lane_px", self.lane_detection_callback, 1)
 
