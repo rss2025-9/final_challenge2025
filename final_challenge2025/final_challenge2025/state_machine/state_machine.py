@@ -20,7 +20,7 @@ from final_challenge2025.particle_filter import ParticleFilter
 from final_challenge2025.trajectory_planner import PathPlan
 from final_challenge2025.trajectory_follower import PurePursuit
 from final_challenge2025.wall_follower import WallFollower
-from std_msgs.msg import String
+from final_interfaces.msg import DetectionStates
 
 class HeistState(Enum):
     IDLE = auto()
@@ -34,23 +34,6 @@ class HeistState(Enum):
     COMPLETE = auto()
 
 class StateMachineNode(Node):
-    # helpers 
-    def any_detection(self, target_label):
-        return any(label == target_label for _, label, _ in self.detections)
-
-    def detect_green_light(self):
-        if self.last_frame is None: return False
-        for _, label, bbox in self.detections:
-            if label == 'traffic_light':
-                x, y = bbox.x_offset, bbox.y_offset
-                w, h = bbox.width, bbox.height
-                roi = self.last_frame[y:y+h, x:x+w]
-                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                mask = cv2.inRange(hsv, (40,50,50), (90,255,255))
-                if cv2.countNonZero(mask) > 0.1*h*w:
-                    return True
-        return False
-
     # constructor 
     def __init__(self):
         super().__init__('state_machine')
@@ -69,8 +52,7 @@ class StateMachineNode(Node):
         self.bridge = CvBridge()
         self.create_subscription(PoseArray, '/shrinkray_part', self.goals_cb, 1)
         self.create_subscription(PoseStamped, '/initialpose', self.pose_cb, 1)
-        self.create_subscription(String, '/traffic_light/state', self.traffic_cb, 1)
-        self.create_subscription(DetectionArray, '/yolo/detections', self.detection_cb, 1)
+        self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1)
         self.create_timer(0.1, self.on_timer)
 
         # moving parts 
@@ -91,8 +73,16 @@ class StateMachineNode(Node):
             self.state = HeistState.PLAN_TRAJ1
 
     # detection callback: YOLO detections
-    # def detection_cb(self, msg: TODO):
-    #     pass # TODO: add to detections list 
+    def detection_cb(self, msg: DetectionStates):
+        if msg.traffic_light_state != 'GREEN':
+            self.state = HeistState.WAIT_TRAFFIC
+        if msg.traffic_light_state == 'GREEN':
+            self.state = HeistState.FOLLOW_TRAJ
+        if msg.banana_state == 'DETECTED':
+            # save banana position TODO 
+            self.state = HeistState.PARK
+        if msg.person_state == 'DETECTED':
+            pass 
 
     # State machine 
     def on_timer(self):
@@ -110,12 +100,6 @@ class StateMachineNode(Node):
                 self.state = HeistState.FOLLOW_TRAJ
 
             case HeistState.FOLLOW_TRAJ:
-                # check for traffic light
-                if not self.detect_green_light():
-                    self.get_logger().info('Traffic light yellow/red, waiting')
-                    self.state = HeistState.WAIT_TRAFFIC
-                    return
-                # normal follow
                 self.follower.follow_path()
                 if self.follower.has_reached_goal():
                     self.get_logger().info(f'Reached goal #{self.goal_idx}')
@@ -123,29 +107,15 @@ class StateMachineNode(Node):
                     self.state = HeistState.SCOUT
 
             case HeistState.WAIT_TRAFFIC:
-                # wait until green
-                if self.detect_green_light():
-                    self.get_logger().info('Green light, resuming')
-                    # back to prior follow state
-                    self.state = HeistState.FOLLOW_TRAJ
-                else:
-                    self.get_logger().info('No green light, waiting')
+                self.get_logger().info('No green light, waiting')
 
             case HeistState.SCOUT:
-                if self.any_detection('banana'):
-                    self.get_logger().info(f'Banana seen #{self.goal_idx}')
-                    self.state = HeistState.PARK
-                else: 
-                    pass 
-                    # TODO: sweep around to find banana
+                # TODO: sweep around to find banana
+                pass
 
             case HeistState.PARK:
-                if self.any_detection('banana'):
-                    self.get_logger().info(f'Identified banana #{self.goal_idx}')
-                    # TODO: add parking controller to park in front of banana
-                    self.state = HeistState.PICKUP
-                else:
-                    self.state = HeistState.SCOUT
+                # TODO: parking controller in front of banana
+                self.state = HeistState.PICKUP
 
             case HeistState.PICKUP:
                 # Starts the pickup process.

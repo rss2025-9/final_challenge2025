@@ -1,12 +1,11 @@
+import threading
+
 import rclpy
 from rclpy.node import Node
 # Driving.
 from ackermann_msgs.msg import AckermannDriveStamped
-from nav_msgs.msg import Odometry
-# Geometry.
-from geometry_msgs.msg import Pose, PoseArray
-from tf_transformations import euler_from_quaternion
 
+# Numpy
 import numpy as np
 import numpy.typing as npt
 
@@ -63,6 +62,8 @@ class PurePursuit(Node):
         self.drive_pub = self.create_publisher(
             AckermannDriveStamped, self.drive_topic, 1
         )
+        # Lock for the trajectory updates.
+        self.trajectory_lock = threading.Lock()
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """
@@ -111,21 +112,23 @@ class PurePursuit(Node):
         Employs real time kinematics to evolve the trajectory with commanded motion.
         """
         # Applies the translation to the trajectory.
-        drive_distance: float = speed * self.refresh_rate
         translation_vector: npt.NDArray = np.array([
-            drive_distance * np.cos(steering_angle),
-            drive_distance * np.sin(steering_angle)
+            np.cos(steering_angle),
+            np.sin(steering_angle)
         ])
         # Applies the rotation to the trajectory.
         rotation_matrix: npt.NDArray = np.array([
             [np.cos(steering_angle), -np.sin(steering_angle)],
             [np.sin(steering_angle), np.cos(steering_angle)]
         ])
+        ## TODO:: May need to apply adaptive time evolution.
         # Applies the translation and rotation to the trajectory.
-        self.trajectory.points -= translation_vector
-        self.trajectory.points = np.dot(
-            self.trajectory.points, rotation_matrix.T
-        )
+        with self.trajectory_lock:
+            drive_distance: float = speed * self.refresh_rate
+            self.trajectory.points -= drive_distance * translation_vector
+            self.trajectory.points = np.dot(
+                self.trajectory.points, rotation_matrix.T
+            )
 
     def timer_callback(self):
         """
@@ -178,7 +181,9 @@ class PurePursuit(Node):
             # Gets how far into the red we are from the safe lane zone.
             deviation_delta: float = np.abs(self.deviation) - self.max_deviation
             # Feeds the deviation delta into a tanh function to get a bounded correction.
-            correction: float = np.tanh((np.sign(self.deviation) * deviation_delta) / self.max_deviation)
+            correction: float = np.tanh((
+                np.sign(self.deviation) * deviation_delta
+            ) / self.max_deviation)
             # Applies the correction to the goal point.
             goal_point[1] += correction
             # Renormalizes to the distance of the lookahead.
@@ -190,7 +195,9 @@ class PurePursuit(Node):
         # Calculate the steering angle.
         steering_angle: float = np.arctan(gamma * self.wheelbase_length)
         # Calculates the speed proportional to the gamma.
-        speed: float = max(self.speed * (1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))), 1.0)
+        speed: float = max(self.speed * (
+            1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))
+        ), 1.0)
         # Publish the drive command.
         self.publish_drive_cmd(speed, steering_angle)
 
@@ -203,16 +210,17 @@ class PurePursuit(Node):
         """
         Sets a new trajectory to follow.
         """
-        self.get_logger().info(f"Receiving new trajectory {len(msg.poses)} points")
+        with self.trajectory_lock:
+            self.get_logger().info(f"Receiving new trajectory {len(msg.poses)} points")
 
-        self.trajectory.clear()
-        # Converts from poses to the utility trajectory class.
-        self.trajectory.fromPoseArray(msg)
-        self.trajectory.publish_viz(duration=0.0)
-        # Notes the deviation from the trajectory.
-        self.deviation = msg.deviation
-        # flag to check that we have a trajectory.
-        self.initialized_traj = True
+            self.trajectory.clear()
+            # Converts from poses to the utility trajectory class.
+            self.trajectory.fromPoseArray(msg)
+            self.trajectory.publish_viz(duration=0.0)
+            # Notes the deviation from the trajectory.
+            self.deviation = msg.deviation
+            # flag to check that we have a trajectory.
+            self.initialized_traj = True
 
 
 def main(args=None):
