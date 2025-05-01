@@ -15,11 +15,12 @@ class DetectorNode(Node):
         super().__init__("detector")
         self.detector = Detector()
         self.publisher = self.create_publisher(Image, "/detector/annotated_img", 1)
-        # self.publisher = self.create_publisher(TODO, "/yolo/detections", 1)
         self.subscriber = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.callback, 1)
         self.bridge = CvBridge()
 
-        self.tl_pub = self.create_publisher(String, '/traffic_light/state', 1)
+        self.traffic_light_state = self.create_publisher(String, '/traffic_light/state', 1)
+        self.banana_state = self.create_publisher(String, '/banana/state', 1)
+        self.person_state = self.create_publisher(String, '/person/state', 1)
 
         self.get_logger().info("Detector Initialized")
 
@@ -43,11 +44,9 @@ class DetectorNode(Node):
         self.publisher.publish(ros_img)
         
         # get traffic state 
-        state = self.check_traffic_light(image, predictions)
-        msg   = String(data=state)
-        self.tl_pub.publish(msg)
+        self.check_states(image, predictions)
 
-    def check_traffic_light(self, frame, preds):
+    def check_states(self, frame, preds):
         for (x1, y1, x2, y2), label in preds:
             if label == 'traffic_light':
                 x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
@@ -64,11 +63,36 @@ class DetectorNode(Node):
                 mg = cv2.inRange(hsv, (40,50,50), (90,255,255))
                 green_count = int(cv2.countNonZero(mg))
                 if red_count > 0.1 * area:
-                    return 'RED'
+                    self.traffic_light_state.publish('RED')
                 if green_count > 0.1 * area:
-                    return 'GREEN'
-                return 'UNKNOWN'
-        return 'NONE'
+                    self.traffic_light_state.publish('GREEN')
+            elif label == 'banana':
+                x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
+                roi = frame[y1:y2, x1:x2]
+                if roi.size == 0:
+                    continue
+                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                area = roi.shape[0] * roi.shape[1]
+                # yellow mask
+                m = cv2.inRange(hsv, (20,50,50), (30,255,255))
+                yellow_count = int(cv2.countNonZero(m))
+                if yellow_count > 0.1 * area:
+                    self.banana_state.publish('YELLOW')
+            elif label == 'person': 
+                x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
+                roi = frame[y1:y2, x1:x2]
+                if roi.size == 0:
+                    continue
+                self.person_state.publish('DETECTED')
+            else: 
+                self.traffic_light_state.publish('NONE')
+                self.banana_state.publish('NONE')
+                self.person_state.publish('NONE')
+        # if no detections, also publish NONE
+        if not preds:
+            self.traffic_light_state.publish('NONE')
+            self.banana_state.publish('NONE')
+            self.person_state.publish('NONE')
 
 def main(args=None):
     rclpy.init(args=args)

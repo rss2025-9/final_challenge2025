@@ -66,7 +66,7 @@ class StateMachineNode(Node):
         self.state = HeistState.IDLE
         self.intial_pose = None 
         self.goals = []             # two (x,y) targets
-        self.detections = []        # [(timestamp,label,bbox)]
+        self.detections = []        # [(timestamp,label)]
         self.last_frame = None      # latest raw image for color segmentation
         self.pickup_time = None
 
