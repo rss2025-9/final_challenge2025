@@ -3,6 +3,7 @@
 import rclpy
 from rclpy.node import Node
 
+import cv2
 from cv_bridge import CvBridge
 
 from sensor_msgs.msg import Image
@@ -64,6 +65,11 @@ class LaneDetector(Node):
             y1 += crop_y_start
             y2 += crop_y_start
 
+            # visualize filtered lines in debugging image
+            pt1 = (int(x1), int(y1))
+            pt2 = (int(x2), int(y2))
+            cv2.line(image, pt1, pt2, color=(255, 0, 0), thickness=2)  # blue lines
+
             # middle x-coordinate of the line
             mid_x = (x1 + x2) // 2
 
@@ -76,6 +82,12 @@ class LaneDetector(Node):
         # get inner left and right lines
         left_inner_line = self.choose_inner(left_lines, "left")
         right_inner_line = self.choose_inner(right_lines, "right")
+
+        if left_inner_line:
+            self.draw_line(image, left_inner_line, (0, 255, 255))
+
+        if right_inner_line:
+            self.draw_line(image, right_inner_line, (0, 255, 255))
 
         # get equally placed points from left and right lines
         num_points = 10     # can tune this value
@@ -121,6 +133,8 @@ class LaneDetector(Node):
         self.lane_pub.publish(center_poses)
 
         # publish debugging image
+        for (u, v) in center_points:
+            cv2.circle(image, (int(u), int(v)), radius=4, color=(0, 0, 255), thickness=-1)
         debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
         self.debug_pub.publish(debug_msg)
 
@@ -135,6 +149,10 @@ class LaneDetector(Node):
             if side == "right":
                 return min(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
             
+    # helper function to draw line
+    def draw_line(self, image, line, color):
+        x1, y1, x2, y2 = line[0]
+        cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)), color, thickness=2)
 
 def main(args=None):
     rclpy.init(args=args)

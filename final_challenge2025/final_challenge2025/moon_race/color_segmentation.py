@@ -30,7 +30,7 @@ def cd_color_segmentation(img, template):
 
 	# crop the image to focus on the lower half
 	height = img.shape[0]
-	crop_y_start = height // 2  # crop down the image (tune this to crop more)
+	crop_y_start = height // 3  # crop down the image (tune this to crop more)
 	cropped_img = img[crop_y_start:, :, :]  # y, x, channel
 
 	# convert the image from RGB to HSV
@@ -60,11 +60,11 @@ def cd_color_segmentation(img, template):
     # Line detection
 	# rho is in pixels, theta is in radians
 	lines = cv2.HoughLinesP(
-		edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=15, maxLineGap=10
+		edges, rho=1, theta=np.pi/180, threshold=20, minLineLength=50, maxLineGap=20
 	)
 	
 	filtered_lines = []
-	threshold_angle = 23	# in degrees (tune this value if needed)
+	threshold_angle = 40	# in degrees (tune this value if needed)
 	for line in lines:
 		x1, y1, x2, y2 = line[0]
 		dx = x2 - x1
