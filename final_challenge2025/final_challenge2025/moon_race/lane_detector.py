@@ -91,21 +91,32 @@ class LaneDetector(Node):
         if right_inner_line:
             self.draw_line(image, right_inner_line, (0, 255, 255))
 
-        left_start = np.array(left_inner_line[0:2])
-        left_end = np.array(left_inner_line[2:4])
-
-        right_start = np.array(right_inner_line[0:2])
-        right_end = np.array(right_inner_line[2:4])
 
         # get equally placed points from left and right lines
         num_points = 10     # can tune this value
         center_points = []
 
+        # get the start and end points of the left and right lines
+        left_start = np.array(left_inner_line[0:2])
+        left_end = np.array(left_inner_line[2:4])
+        right_start = np.array(right_inner_line[0:2])
+        right_end = np.array(right_inner_line[2:4])
+        
+        # From point perspective left vec should be going to the right.
+        # From point perspective right vec should be going to the left.
+        left_vec = (left_end - left_start) / num_points
+        right_vec = (right_end - right_start) / num_points
+        if left_vec[0] < 0:
+            left_vec = -left_vec
+            left_start, left_end = left_end, left_start
+        if right_vec[0] > 0:
+            right_vec = -right_vec
+            right_start, right_end = right_end, right_start
+        
         for i in range(num_points):
-            t = i / (num_points - 1)    # ranges from 0 to 1
             # Calculate the left and right line points
-            left_pt = left_start + t * (left_end - left_start)
-            right_pt = right_start + t * (right_end - right_start)
+            left_pt = left_start + i * left_vec
+            right_pt = right_start + i * right_vec
 
             # get the center point of the left and right lines
             center = (left_pt + right_pt) / 2
@@ -133,8 +144,8 @@ class LaneDetector(Node):
         self.lane_pub.publish(center_poses)
 
         # publish debugging image
-        for (u, v) in center_points:
-            cv2.circle(image, (int(u), int(v)), radius=4, color=(0, 0, 255), thickness=-1)
+        for i, (u, v) in enumerate(center_points):
+            cv2.circle(image, (int(u), int(v)), radius=4, color=(i * 10, i * 10, i * 10), thickness=-1)
         debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
         self.debug_pub.publish(debug_msg)
 
