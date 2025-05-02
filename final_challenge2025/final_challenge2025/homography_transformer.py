@@ -124,9 +124,6 @@ class HomographyTransformer(Node):
             relative_traj.poses.append(relative_xy_pose)
 
         relative_traj.deviation = msg.deviation
-
-        self.draw_marker(x, y, "zed_left_camera_frame")
-        self.get_logger().info(f"relative lane positions in real world (meters): {x}, {y}")
         self.lane_pub.publish(relative_traj)
 
     def transformUvToXy(self, u, v):

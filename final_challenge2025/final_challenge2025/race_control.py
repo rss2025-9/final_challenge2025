@@ -204,12 +204,11 @@ class PurePursuit(Node):
         # Update the trajectory given the commanded motion.
         self.real_time_kinematics(steering_angle, speed)
 
-
-
     def trajectory_callback(self, msg: WorldTrajInfo):
         """
         Sets a new trajectory to follow.
         """
+        self.get_logger().info(f"Received new trajectory, {len(msg.poses)} points")
         with self.trajectory_lock:
             self.get_logger().info(f"Receiving new trajectory {len(msg.poses)} points")
 
