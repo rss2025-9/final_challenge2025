@@ -140,10 +140,14 @@ class PurePursuit(Node):
             self.publish_drive_cmd(0.0, 0.0)
             return
         
+        # Converts the trajectory points into a numpy array.
+        with self.trajectory_lock:
+            traj_pts: npt.NDArray[np.float64] = np.array(self.trajectory.points)
+
         # Calculates the distance to all points in the trajectory, vectorized.
-        distances: npt.NDArray = np.linalg.norm(self.trajectory.points, axis=1)
+        distances: npt.NDArray = np.linalg.norm(traj_pts, axis=1)
         # Calculates whether the points are ahead of the vehicle.
-        forwards: npt.NDArray[np.bool] = self.trajectory.points[:, 0] > 0
+        forwards: npt.NDArray[np.bool] = traj_pts[:, 0] > 0
         # Replaces the distance of behind points with a large value.
         distances_ahead: npt.NDArray = np.where(forwards, distances, np.inf)
         # Finds the index of the closest point ahead.
@@ -157,23 +161,23 @@ class PurePursuit(Node):
             # Get the closest point in the trajectory.
             closest_idx = np.argmin(distances)
             # If the closest point is the last one, stop.
-            if closest_idx == len(self.trajectory.points) - 1:
+            if closest_idx == len(traj_pts) - 1:
                 self.get_logger().warning("Last point in trajectory reached, stopping.")
                 self.publish_drive_cmd(0.0, 0.0)
                 return
             # Otherwise, set the goal point to the closest point.
             goal_point = self.get_trajectory(
-                closest_idx, self.trajectory.points, distances
+                closest_idx, traj_pts, distances
             )
         elif distances[closest_idx] >= self.lookahead:
             # If the closest point is beyond the lookahead distance, interpolate
             # between the car and it to find the goal point.
-            goal_point = self.trajectory.points[closest_idx] * \
+            goal_point = traj_pts[closest_idx] * \
                          (distances[closest_idx] / self.lookahead)
         else:
             # Find the first point that is within the lookahead distance.
             goal_point = self.get_trajectory(
-                closest_idx, self.trajectory.points, distances
+                closest_idx, traj_pts, distances
             )
 
         # If the deviation is significant, turn harder to the side.
@@ -210,8 +214,6 @@ class PurePursuit(Node):
         """
         self.get_logger().info(f"Received new trajectory, {len(msg.poses)} points")
         with self.trajectory_lock:
-            self.get_logger().info(f"Receiving new trajectory {len(msg.poses)} points")
-
             self.trajectory.clear()
             # Converts from poses to the utility trajectory class.
             self.trajectory.fromPoseArray(msg)
