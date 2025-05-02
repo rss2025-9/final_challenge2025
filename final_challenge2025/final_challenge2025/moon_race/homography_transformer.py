@@ -5,11 +5,7 @@ from rclpy.node import Node
 import numpy as np
 
 import cv2
-from cv_bridge import CvBridge, CvBridgeError
 
-from std_msgs.msg import String
-from sensor_msgs.msg import Image
-from ackermann_msgs.msg import AckermannDriveStamped
 from visualization_msgs.msg import Marker
 from final_interfaces.msg import TrajInfo, WorldTrajInfo
 from geometry_msgs.msg import Pose

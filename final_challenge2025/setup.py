@@ -24,10 +24,11 @@ setup(
     entry_points={
         'console_scripts': [
             'detector = final_challenge2025.shrinkray_heist.model.detection_node:main',
-            'homography_transformer = final_challenge2025.homography_transformer:main',
-            'lane_detector = final_challenge2025.lane_detector:main',
             'safety_controller = final_challenge2025.safety_controller:main',
+            # Race files.
             'race_control = final_challenge2025.moon_race.race_control:main',
+            'lane_detector = final_challenge2025.moon_race.lane_detector:main',
+            'homography_transformer = final_challenge2025.moon_race.homography_transformer:main',
         ],
     },
 )
