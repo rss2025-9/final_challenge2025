@@ -11,13 +11,13 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (f'share/{package_name}/launch/race', glob.glob(os.path.join('launch', '*launch.*'))),
+        (f'share/{package_name}/launch', glob.glob(os.path.join('launch', '*launch.*'))),
         (os.path.join('share', package_name, 'config', 'race'), glob.glob('config/race/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='rss2025-team-9',
-    maintainer_email=['mkzstar2013@gmail.com', 'rengz@mit.edu', 'apados@mit.edu', 'selinna@mit.edu'],
+    maintainer_email=['mzaw1@mit.edu', 'rengz@mit.edu', 'apados@mit.edu', 'selinna@mit.edu'],
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
@@ -28,6 +28,7 @@ setup(
             'lane_detector = final_challenge2025.lane_detector:main',
             'safety_controller = final_challenge2025.safety_controller:main',
             'trajectory_follower = final_challenge2025.trajectory_follower:main',
+            'race_control = final_challenge2025.race_control:main'
         ],
     },
 )

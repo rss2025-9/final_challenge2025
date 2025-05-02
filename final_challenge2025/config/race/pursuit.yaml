@@ -4,7 +4,7 @@ trajectory_follower:
     
     lookahead: 5.0
     speed: 4.0
-    wheelbase: 0.3302
+    wheelbase_length: 0.3302
 
     lane_width: 0.5
     lane_buffer: 0.1
