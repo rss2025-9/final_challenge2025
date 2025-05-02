@@ -144,6 +144,7 @@ class PurePursuit(Node):
         with self.trajectory_lock:
             traj_pts: npt.NDArray[np.float64] = np.array(self.trajectory.points)
 
+        self.get_logger().info(f"trajectory points: {traj_pts}")
         # Calculates the distance to all points in the trajectory, vectorized.
         distances: npt.NDArray = np.linalg.norm(traj_pts, axis=1)
         # Calculates whether the points are ahead of the vehicle.
@@ -206,7 +207,7 @@ class PurePursuit(Node):
         self.publish_drive_cmd(speed, steering_angle)
 
         # Update the trajectory given the commanded motion.
-        self.real_time_kinematics(steering_angle, speed)
+        # self.real_time_kinematics(steering_angle, speed)
 
     def trajectory_callback(self, msg: WorldTrajInfo):
         """
