@@ -2,15 +2,10 @@ import cv2
 import numpy as np
 
 #################### X-Y CONVENTIONS #########################
-# 0,0  X  > > > > >
-#
+# 0,0  X  > > >
 #  Y
-#
 #  v  This is the image. Y increases downwards, X increases rightwards
 #  v  
-#  v
-#  v
-#  v
 ###############################################################
 
 
