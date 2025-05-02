@@ -126,7 +126,7 @@ class HomographyTransformer(Node):
         relative_traj.deviation = msg.deviation
 
         self.draw_marker(x, y, "zed_left_camera_frame")
-        self.get_logger().info(f"relative cone positions in real world (meters): {x}, {y}")
+        self.get_logger().info(f"relative lane positions in real world (meters): {x}, {y}")
         self.lane_pub.publish(relative_traj)
 
     def transformUvToXy(self, u, v):
@@ -150,25 +150,25 @@ class HomographyTransformer(Node):
         y = homogeneous_xy[1, 0]
         return x, y
 
-    def draw_marker(self, cone_x, cone_y, message_frame):
-        """
-        Publish a marker to represent the cone in rviz.
-        (Call this function if you want)
-        """
-        marker = Marker()
-        marker.header.frame_id = message_frame
-        marker.type = marker.CYLINDER
-        marker.action = marker.ADD
-        marker.scale.x = .2
-        marker.scale.y = .2
-        marker.scale.z = .2
-        marker.color.a = 1.0
-        marker.color.r = 1.0
-        marker.color.g = .5
-        marker.pose.orientation.w = 1.0
-        marker.pose.position.x = cone_x
-        marker.pose.position.y = cone_y
-        self.marker_pub.publish(marker)
+    # def draw_marker(self, cone_x, cone_y, message_frame):
+    #     """
+    #     Publish a marker to represent the cone in rviz.
+    #     (Call this function if you want)
+    #     """
+    #     marker = Marker()
+    #     marker.header.frame_id = message_frame
+    #     marker.type = marker.CYLINDER
+    #     marker.action = marker.ADD
+    #     marker.scale.x = .2
+    #     marker.scale.y = .2
+    #     marker.scale.z = .2
+    #     marker.color.a = 1.0
+    #     marker.color.r = 1.0
+    #     marker.color.g = .5
+    #     marker.pose.orientation.w = 1.0
+    #     marker.pose.position.x = cone_x
+    #     marker.pose.position.y = cone_y
+    #     self.marker_pub.publish(marker)
 
 def main(args=None):
     rclpy.init(args=args)
