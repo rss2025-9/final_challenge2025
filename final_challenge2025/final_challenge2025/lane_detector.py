@@ -125,7 +125,7 @@ class LaneDetector(Node):
         self.debug_pub.publish(debug_msg)
 
     # helper function to choose the inner line of the track
-    def choose_inner(lines, side):
+    def choose_inner(self, lines, side):
             if not lines:
                 return None
             # choose the line with maximum mid_x for left lines

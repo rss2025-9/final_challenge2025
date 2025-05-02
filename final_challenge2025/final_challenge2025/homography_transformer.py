@@ -150,25 +150,25 @@ class HomographyTransformer(Node):
         y = homogeneous_xy[1, 0]
         return x, y
 
-    # def draw_marker(self, cone_x, cone_y, message_frame):
-    #     """
-    #     Publish a marker to represent the cone in rviz.
-    #     (Call this function if you want)
-    #     """
-    #     marker = Marker()
-    #     marker.header.frame_id = message_frame
-    #     marker.type = marker.CYLINDER
-    #     marker.action = marker.ADD
-    #     marker.scale.x = .2
-    #     marker.scale.y = .2
-    #     marker.scale.z = .2
-    #     marker.color.a = 1.0
-    #     marker.color.r = 1.0
-    #     marker.color.g = .5
-    #     marker.pose.orientation.w = 1.0
-    #     marker.pose.position.x = cone_x
-    #     marker.pose.position.y = cone_y
-    #     self.marker_pub.publish(marker)
+    def draw_marker(self, x, y, message_frame):
+        """
+        Publish a marker to represent the waypoint in rviz.
+        (Call this function if you want)
+        """
+        marker = Marker()
+        marker.header.frame_id = message_frame
+        marker.type = marker.CYLINDER
+        marker.action = marker.ADD
+        marker.scale.x = .2
+        marker.scale.y = .2
+        marker.scale.z = .2
+        marker.color.a = 1.0
+        marker.color.r = 1.0
+        marker.color.g = .5
+        marker.pose.orientation.w = 1.0
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        self.marker_pub.publish(marker)
 
 def main(args=None):
     rclpy.init(args=args)
