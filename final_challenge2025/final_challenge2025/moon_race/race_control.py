@@ -54,6 +54,10 @@ class PurePursuit(Node):
         self.trajectory: LineTrajectory = LineTrajectory("/followed_trajectory")
         self.deviation = 0.0
         self.initialized_traj = False
+        # The trajectory points that are RTK'd are stored here.
+        self.traj_pts: npt.NDArray[np.float64] = np.zeros((0, 2))
+        # Lock for the trajectory updates.
+        self.trajectory_lock = threading.Lock()
 
         self.midpoint_sub = self.create_subscription(
             WorldTrajInfo, "/trajectory/midpoint",
@@ -62,8 +66,6 @@ class PurePursuit(Node):
         self.drive_pub = self.create_publisher(
             AckermannDriveStamped, self.drive_topic, 1
         )
-        # Lock for the trajectory updates.
-        self.trajectory_lock = threading.Lock()
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """
@@ -109,26 +111,30 @@ class PurePursuit(Node):
 
     def real_time_kinematics(self, steering_angle: float, speed: float):
         """
-        Employs real time kinematics to evolve the trajectory with commanded motion.
+        Evolve the stored trajectory by moving the vehicle forward by
+        drive_distance along its x‑axis and rotating the frame by the
+        small yaw change from the bicycle model.
         """
-        # Applies the translation to the trajectory.
-        translation_vector: npt.NDArray = np.array([
-            np.cos(steering_angle),
-            np.sin(steering_angle)
-        ])
-        # Applies the rotation to the trajectory.
-        rotation_matrix: npt.NDArray = np.array([
-            [np.cos(steering_angle), -np.sin(steering_angle)],
-            [np.sin(steering_angle), np.cos(steering_angle)]
-        ])
-        ## TODO:: May need to apply adaptive time evolution.
-        # Applies the translation and rotation to the trajectory.
+        # how far we move in this timestep
+        drive_distance = speed * self.refresh_rate
+        # yaw change = v/L * tan(delta) * dt
+        delta_yaw = drive_distance * np.tan(steering_angle) / self.wheelbase_length
+
         with self.trajectory_lock:
-            drive_distance: float = speed * self.refresh_rate
-            self.trajectory.points -= drive_distance * translation_vector
-            self.trajectory.points = np.dot(
-                self.trajectory.points, rotation_matrix.T
-            )
+            # translate every point backward by drive_distance along the x‑axis
+            # since points are in the vehicle frame
+            self.traj_pts[:, 0] -= drive_distance
+            # rotation matrix for a frame rotation of -delta_yaw:
+            c, s = np.cos(delta_yaw), np.sin(delta_yaw)
+            R = np.array([
+                [c, -s],
+                [s, c]
+            ])
+            # rotate all points into the new vehicle frame
+            self.traj_pts = self.traj_pts @ R
+            # Recalculates the deviation from the trajectory.
+            self.deviation = np.mean(self.traj_pts[:, 1])
+
 
     def timer_callback(self):
         """
@@ -139,10 +145,11 @@ class PurePursuit(Node):
         if not self.initialized_traj:
             self.publish_drive_cmd(0.0, 0.0)
             return
-        
-        # Converts the trajectory points into a numpy array.
+
+        # Get the trajectory points.
         with self.trajectory_lock:
-            traj_pts: npt.NDArray[np.float64] = np.array(self.trajectory.points)
+            # Get the trajectory points in the vehicle frame.
+            traj_pts: npt.NDArray[np.float64] = self.traj_pts
 
         self.get_logger().info(f"trajectory points: {traj_pts}")
         # Calculates the distance to all points in the trajectory, vectorized.
@@ -207,7 +214,7 @@ class PurePursuit(Node):
         self.publish_drive_cmd(speed, steering_angle)
 
         # Update the trajectory given the commanded motion.
-        # self.real_time_kinematics(steering_angle, speed)
+        self.real_time_kinematics(steering_angle, speed)
 
     def trajectory_callback(self, msg: WorldTrajInfo):
         """
@@ -218,11 +225,13 @@ class PurePursuit(Node):
             self.trajectory.clear()
             # Converts from poses to the utility trajectory class.
             self.trajectory.fromPoseArray(msg)
-            self.trajectory.publish_viz(duration=0.0)
+            self.traj_pts: npt.NDArray[np.float64] = np.array(self.trajectory.points)
             # Notes the deviation from the trajectory.
             self.deviation = msg.deviation
             # flag to check that we have a trajectory.
             self.initialized_traj = True
+        # Publish the trajectory for visualization.
+        self.trajectory.publish_viz(duration=0.0)
 
 
 def main(args=None):
