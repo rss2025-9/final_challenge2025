@@ -37,8 +37,8 @@ def cd_color_segmentation(img, template):
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for orange color
-	lower_bound = np.array([0, 0, 90])	# hue, saturation (intensity), value (brightness)
-	upper_bound = np.array([179, 90, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
+	lower_bound = np.array([30, 2, 135])	# hue, saturation (intensity), value (brightness)
+	upper_bound = np.array([255, 30, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
 	mask = cv2.inRange(hsv_object, lower_bound, upper_bound)
@@ -64,7 +64,7 @@ def cd_color_segmentation(img, template):
 	)
 	
 	filtered_lines = []
-	threshold_angle = 40	# in degrees (tune this value if needed)
+	threshold_angle = 20	# in degrees (tune this value if needed)
 	for line in lines:
 		x1, y1, x2, y2 = line[0]
 		dx = x2 - x1

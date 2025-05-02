@@ -151,7 +151,7 @@ class PurePursuit(Node):
             # Get the trajectory points in the vehicle frame.
             traj_pts: npt.NDArray[np.float64] = self.traj_pts
 
-        self.get_logger().info(f"trajectory points: {traj_pts}")
+        # self.get_logger().info(f"trajectory points: {traj_pts}")
         # Calculates the distance to all points in the trajectory, vectorized.
         distances: npt.NDArray = np.linalg.norm(traj_pts, axis=1)
         # Calculates whether the points are ahead of the vehicle.
@@ -211,6 +211,10 @@ class PurePursuit(Node):
             1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))
         ), 1.0)
         # Publish the drive command.
+        self.get_logger().info(
+            f"Steering angle: {steering_angle:.2f}, speed: {speed:.2f}, "
+            f"deviation: {self.deviation:.2f}"
+        )
         self.publish_drive_cmd(speed, steering_angle)
 
         # Update the trajectory given the commanded motion.
