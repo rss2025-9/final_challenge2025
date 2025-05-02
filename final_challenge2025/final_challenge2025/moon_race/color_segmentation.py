@@ -60,7 +60,7 @@ def cd_color_segmentation(img, template):
     # Line detection
 	# rho is in pixels, theta is in radians
 	lines = cv2.HoughLinesP(
-		edges, rho=1, theta=np.pi/180, threshold=20, minLineLength=50, maxLineGap=20
+		edges, rho=1, theta=np.pi/180, threshold=10, minLineLength=70, maxLineGap=20
 	)
 	
 	filtered_lines = []

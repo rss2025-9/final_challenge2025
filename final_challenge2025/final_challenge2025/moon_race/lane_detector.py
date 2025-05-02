@@ -6,6 +6,8 @@ from rclpy.node import Node
 import cv2
 from cv_bridge import CvBridge
 
+import numpy as np
+
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Pose #geometry_msgs not in CMake file
 from final_interfaces.msg import TrajInfo
@@ -80,8 +82,8 @@ class LaneDetector(Node):
                 right_lines.append([[x1, y1, x2, y2]])
             
         # get inner left and right lines
-        left_inner_line = self.choose_inner(left_lines, "left")
-        right_inner_line = self.choose_inner(right_lines, "right")
+        left_inner_line = self.choose_inner(left_lines, "left")[0]
+        right_inner_line = self.choose_inner(right_lines, "right")[0]
 
         if left_inner_line:
             self.draw_line(image, left_inner_line, (0, 255, 255))
@@ -89,27 +91,25 @@ class LaneDetector(Node):
         if right_inner_line:
             self.draw_line(image, right_inner_line, (0, 255, 255))
 
+        left_start = np.array(left_inner_line[0:2])
+        left_end = np.array(left_inner_line[2:4])
+
+        right_start = np.array(right_inner_line[0:2])
+        right_end = np.array(right_inner_line[2:4])
+
         # get equally placed points from left and right lines
         num_points = 10     # can tune this value
-        left_points = []
-        right_points = []
+        center_points = []
 
         for i in range(num_points):
             t = i / (num_points - 1)    # ranges from 0 to 1
-            x_left = (1 - t) * left_inner_line[0][0] + t * left_inner_line[0][2]    # linear interpolation
-            y_left = (1 - t) * left_inner_line[0][1] + t * left_inner_line[0][3]
-            left_points.append((x_left, y_left))
+            # Calculate the left and right line points
+            left_pt = left_start + t * (left_end - left_start)
+            right_pt = right_start + t * (right_end - right_start)
 
-            x_right = (1 - t) * right_inner_line[0][0] + t * right_inner_line[0][2]
-            y_right = (1 - t) * right_inner_line[0][1] + t * right_inner_line[0][3]
-            right_points.append((x_right, y_right))
-        
-        center_points = []
-        # get an array of center points
-        for (xl, yl), (xr, yr) in zip(left_points, right_points):
-            x_center = (xl + xr) / 2
-            y_center = (yl + yr) / 2
-            center_points.append((x_center, y_center))
+            # get the center point of the left and right lines
+            center = (left_pt + right_pt) / 2
+            center_points.append(center)
 
         # get the x coordinate of the bottom of the center line
         bottom_center = max(center_points, key=lambda p: p[1])
@@ -144,14 +144,14 @@ class LaneDetector(Node):
                 return None
             # choose the line with maximum mid_x for left lines
             if side == "left":
-                return max(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
+                return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             # choose the line with minimum mid_x for right lines
             if side == "right":
-                return min(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
+                return min(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             
     # helper function to draw line
     def draw_line(self, image, line, color):
-        x1, y1, x2, y2 = line[0]
+        x1, y1, x2, y2 = line
         cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)), color, thickness=2)
 
 def main(args=None):
