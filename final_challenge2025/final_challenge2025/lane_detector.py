@@ -2,17 +2,15 @@
 
 import rclpy
 from rclpy.node import Node
-import numpy as np
 
-import cv2
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Point, Pose #geometry_msgs not in CMake file
+from geometry_msgs.msg import Pose #geometry_msgs not in CMake file
 from final_interfaces.msg import TrajInfo
 
 # import color segmentation algorithm; call this function in ros_image_callback
-from color_segmentation import cd_color_segmentation
+from .color_segmentation import cd_color_segmentation
 
 
 class LaneDetector(Node):

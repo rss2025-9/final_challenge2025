@@ -11,7 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (f'share/{package_name}/launch/race', glob.glob(os.path.join('launch', 'race', '*launch.*'))),
+        (f'share/{package_name}/launch/race', glob.glob(os.path.join('launch', '*launch.*'))),
         (os.path.join('share', package_name, 'config', 'race'), glob.glob('config/race/*.yaml')),
     ],
     install_requires=['setuptools'],

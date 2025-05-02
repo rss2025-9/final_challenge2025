@@ -2,7 +2,7 @@
     <node pkg="final_challenge2025" exec="lane_detector" name="lane_detector" output="screen">
         <param from="$(find-pkg-share final_challenge2025)/config/race/pursuit.yaml"/>
     </node>
-    <node pkg="final_challenge2025" exec="trajectory_follower" name="trajectory_follower" output="screen">
+    <node pkg="final_challenge2025" exec="race_control" name="race_control" output="screen">
         <param from="$(find-pkg-share final_challenge2025)/config/race/pursuit.yaml"/>
     </node>
     <node pkg="final_challenge2025" exec="homography_transformer" name="homography_transformer" output="screen">
