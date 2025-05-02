@@ -9,7 +9,7 @@ from ackermann_msgs.msg import AckermannDriveStamped
 import numpy as np
 import numpy.typing as npt
 
-from .utils import LineTrajectory
+from final_challenge2025.utils import LineTrajectory
 
 # Imports WorldTrajInfo custom message.
 from final_interfaces.msg import WorldTrajInfo

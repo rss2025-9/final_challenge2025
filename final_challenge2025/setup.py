@@ -27,7 +27,7 @@ setup(
             'homography_transformer = final_challenge2025.homography_transformer:main',
             'lane_detector = final_challenge2025.lane_detector:main',
             'safety_controller = final_challenge2025.safety_controller:main',
-            'trajectory_follower = final_challenge2025.trajectory_follower:main',
+            'race_control = final_challenge2025.moon_race.race_control:main',
         ],
     },
 )
