@@ -62,7 +62,7 @@ Gru, in his infinite wisdom, has already created a ~ machine learning ~ based sh
 
 Here are the details of the challenge:
 
-* You will be given 2 locations from the 3 possible ones marked on the Stata basement map (TA's will click 2 points in rviz briefly before you head off)
+* You will be given 2 locations at random via the `basement_point_publisher` node -- see the Stata map for an example of possible locations. We will not assign locations outside of the range of the ones on the map. 
 * You must detect the correct part and each location and "pick it up" (stop for 5 seconds)
 * You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
 * You should escape Vector's fortress and return to the starting location
@@ -80,7 +80,7 @@ You will recieve 3 points for each location you successfully reach. At each loca
 
 **Formula for Penalties:**
 
-`penalties =  min(5 * detections, 3) + 1 * manual_assist`
+`penalties =  min(0.5 * detections, 3) + 1 * manual_assist`
 
 `detections` is the number of times you trigger Vector's security system. There are a couple ways that can happen:
 
