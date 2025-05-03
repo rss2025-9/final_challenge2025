@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-ROS2 node implementing the full Shrink-Ray Heist state machine,
-with YOLO detection for bananas and traffic lights (red/green stop/go logic).
-"""
 import rclpy
 from rclpy.node import Node
 from enum import Enum, auto
@@ -15,12 +10,12 @@ from geometry_msgs.msg import PoseArray, PoseStamped
 from cv_bridge import CvBridge
 
 from shrinkray_heist.model.detector_msgs.msg import DetectionArray
-
 from final_challenge2025.particle_filter import ParticleFilter
 from final_challenge2025.trajectory_planner import PathPlan
 from final_challenge2025.trajectory_follower import PurePursuit
 from final_challenge2025.wall_follower import WallFollower
 from final_interfaces.msg import DetectionStates
+from ackermann_msgs.msg import AckermannDriveStamped
 
 class HeistState(Enum):
     IDLE = auto()
@@ -39,55 +34,61 @@ class StateMachineNode(Node):
         super().__init__('state_machine')
         self.get_logger().info('Heist State Machine Initialized')
 
-        # Initialize state machine variables
         self.state = HeistState.IDLE
-        self.intial_pose = None 
-        self.goals = []             # two (x,y) targets
-        self.goal_idx = None        # index of the current goal
-        self.detections = []        # [(timestamp,label,bbox)]
-        self.last_frame = None      # latest raw image for color segmentation
+        self.intial_pose = None
+        self.goals = []
+        self.goal_idx = None
         self.pickup_time = None
-
-        # subscriptions
         self.bridge = CvBridge()
+
         self.create_subscription(PoseArray, '/shrinkray_part', self.goals_cb, 1)
         self.create_subscription(PoseStamped, '/initialpose', self.pose_cb, 1)
         self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1)
         self.create_timer(0.1, self.on_timer)
 
-        # moving parts 
         self.planner = PathPlan()
         self.follower = PurePursuit()
         self.wall_follow = WallFollower()
 
-    # intial pose callback 
+        self.parking_started = False
+        self.parking_done_time = None
+
+        self.sweep_count = 0
+        self.max_sweep_attempts = 3
+        self.sweep_start_time = None
+        self.sweep_duration = 2.0
+        self.sweep_drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
+
     def pose_cb(self, msg: PoseStamped):
         self.intial_pose = msg.pose
         self.get_logger().info(f'Initial pose: {self.intial_pose.position.x}, {self.intial_pose.position.y}')
 
-    # Goals callback: set the state once both goals are received
     def goals_cb(self, msg: PoseArray):
         self.goals = [(p.position.x, p.position.y) for p in msg.poses]
         self.get_logger().info(f'Received goals: {self.goals}')
-        if len(self.goals) == 2 and self.state == HeistState.IDLE:
-            self.state = HeistState.PLAN_TRAJ1
+        if len(self.goals) >= 2 and self.state == HeistState.IDLE:
+            self.state = HeistState.PLAN_TRAJ
+            self.goal_idx = 0
 
-    # detection callback: YOLO detections
     def detection_cb(self, msg: DetectionStates):
         if msg.traffic_light_state != 'GREEN':
             self.state = HeistState.WAIT_TRAFFIC
-        if msg.traffic_light_state == 'GREEN':
+        elif msg.traffic_light_state == 'GREEN' and self.state == HeistState.WAIT_TRAFFIC:
             self.state = HeistState.FOLLOW_TRAJ
         if msg.banana_state == 'DETECTED':
-            # save banana position TODO 
             self.state = HeistState.PARK
         if msg.person_state == 'DETECTED':
-            pass 
+            self.get_logger().info('Human detected - stopping temporarily')
+            # Could pause controller or use safety state
 
-    # State machine 
+    def publish_sweep_motion(self, direction: int = 1):
+        sweep_msg = AckermannDriveStamped()
+        sweep_msg.drive.speed = 0.2
+        sweep_msg.drive.steering_angle = direction * 0.34
+        self.sweep_drive_pub.publish(sweep_msg)
+
     def on_timer(self):
         match self.state:
-            # Never should be here unless the state machine is reset.
             case HeistState.IDLE:
                 self.get_logger().info('Waiting for initial pose and goals')
                 if self.intial_pose is not None and len(self.goals) >= 2:
@@ -110,35 +111,52 @@ class StateMachineNode(Node):
                 self.get_logger().info('No green light, waiting')
 
             case HeistState.SCOUT:
-                # TODO: sweep around to find banana
-                pass
+                if self.sweep_count < self.max_sweep_attempts:
+                    if self.sweep_start_time is None:
+                        self.sweep_start_time = time.time()
+                        direction = 1 if self.sweep_count % 2 == 0 else -1
+                        self.publish_sweep_motion(direction)
+                        self.get_logger().info(f'Sweep #{self.sweep_count + 1} started')
+                    elif time.time() - self.sweep_start_time > self.sweep_duration:
+                        self.get_logger().info(f'Sweep #{self.sweep_count + 1} complete')
+                        self.sweep_count += 1
+                        self.sweep_start_time = None
+                else:
+                    self.get_logger().warn('Banana not found after sweeps, continuing')
+                    self.sweep_count = 0
+                    self.state = HeistState.PLAN_TRAJ
+                    self.goal_idx += 1
 
             case HeistState.PARK:
-                # TODO: parking controller in front of banana
-                self.state = HeistState.PICKUP
+                if not self.parking_started:
+                    self.get_logger().info('Starting parking maneuver')
+                    self.parking_started = True
+                    self.parking_done_time = time.time() + 5.0
+                elif time.time() >= self.parking_done_time:
+                    self.get_logger().info('Parking complete')
+                    self.state = HeistState.PICKUP
 
             case HeistState.PICKUP:
-                # Starts the pickup process.
                 if self.pickup_time is None:
                     self.pickup_time = time.time()
                     self.get_logger().info(f'Picking up #{self.goal_idx}')
-                # Pickup time has elapsed, move on.
-                elif (elapsed_time := time.time() - self.pickup_time) > 5.0:
+                elif (elapsed := time.time() - self.pickup_time) > 5.0:
                     self.goal_idx += 1
+                    self.sweep_count = 0
+                    self.parking_started = False
                     if self.goal_idx >= len(self.goals):
                         self.state = HeistState.ESCAPE
                     else:
                         self.state = HeistState.PLAN_TRAJ
-                    self.pickup_time = None
                 else:
-                    self.get_logger().info(f'Picking up #{self.goal_idx}, {elapsed_time:.2f}s elapsed')
+                    self.get_logger().info(f'Waiting during pickup: {elapsed:.1f}s')
+
 
             case HeistState.ESCAPE:
                 self.get_logger().info('Escaping')
                 self.planner.plan_path(self.intial_pose.position)
                 self.follower.follow_path()
                 if self.follower.has_reached_goal():
-                    self.get_logger().info(f'Escaped!')
                     self.state = HeistState.COMPLETE
 
             case HeistState.COMPLETE:
