@@ -134,6 +134,8 @@ class HomographyTransformer(Node):
         mid_vec /= np.linalg.norm(mid_vec)
         mid_end = mid_start + self.extension * mid_vec
 
+        turn_side = msg.turn_side
+
         relative_traj.poses.extend([
             Pose(
                 position=Point(
@@ -148,7 +150,7 @@ class HomographyTransformer(Node):
                 )
             )
         ])
-
+        relative_traj.turn_side = turn_side
         relative_traj.deviation = mid_start[1]
         self.lane_pub.publish(relative_traj)
 

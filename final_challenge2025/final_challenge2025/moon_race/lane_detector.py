@@ -49,20 +49,39 @@ class LaneDetector(Node):
         # convert the ROS image to OpenCV image
         image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
 
-        # get the bounding box from color_segmentation.py
-        lines, crop_y_start, result = cd_color_segmentation(image, None)
-
-        # ensure the lane is detected
-        if not lines:
-            self.get_logger().warn("No lanes detected!")
-
         height, width = image.shape[:2]
         img_center_x = width // 2
+
+        overlap = width // 10   # 10% overlap (tune this value if needed)
+
+        left_img = image[:, :width // 2 + overlap]
+        right_img = image[:, width // 2 - overlap:]
+
+        # get the bounding box from color_segmentation.py
+        left_lines_raw, crop_y_start, result = cd_color_segmentation(left_img, None)
+        right_lines_raw, crop_y_start, result = cd_color_segmentation(right_img, None)
+
+        # ensure the lane is detected
+        if not left_lines_raw and not right_lines_raw:
+            self.get_logger().warn("No lanes detected!")
+            turn_side = "straight"
+        elif not left_lines_raw and right_lines_raw:
+            turn_side = "left"
+        elif left_lines_raw and not right_lines_raw:
+            turn_side = "right"
+        else:
+            turn_side = "straight"
+
+        # offset right lines to align with the full image
+        offset_x_right = width // 2 - overlap
+        for line in right_lines_raw:
+            line[0][0] += offset_x_right    # x1
+            line[0][2] += offset_x_right    # x2
 
         left_lines = []
         right_lines = []
 
-        for line in lines:
+        for line in left_lines_raw + right_lines_raw:
             x1, y1, x2, y2 = line[0]
             y1 += crop_y_start
             y2 += crop_y_start
@@ -133,6 +152,7 @@ class LaneDetector(Node):
                 y=right_end[1]
             )
         )
+        lane.turn_side = turn_side
         self.lane_pub.publish(lane)
 
         # Prints a debug image for detection.
