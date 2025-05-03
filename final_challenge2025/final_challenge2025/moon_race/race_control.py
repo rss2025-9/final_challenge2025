@@ -28,10 +28,12 @@ class PurePursuit(Node):
         self.declare_parameter('lookahead', 1.2)
         self.declare_parameter('speed', 1.0)
         self.declare_parameter('wheelbase_length', 0.3302)
+        self.declare_parameter('lane_correction', 0.2)
 
         self.lookahead: float = self.get_parameter('lookahead').get_parameter_value().double_value
         self.speed: float = self.get_parameter('speed').get_parameter_value().double_value
         self.wheelbase_length: float = self.get_parameter('wheelbase_length').get_parameter_value().double_value
+        self.lane_correction: float = self.get_parameter('lane_correction').get_parameter_value().double_value
         
         # Lane following parameters.
         self.declare_parameter('lane_width', 0.5)
@@ -56,6 +58,10 @@ class PurePursuit(Node):
         self.initialized_traj = False
         # The trajectory points that are RTK'd are stored here.
         self.traj_pts: npt.NDArray[np.float64] = np.zeros((0, 2))
+        # The trajectory vector is stored here.
+        self.traj_vec: npt.NDArray[np.float64] = np.zeros((0, 2))
+        # Whether we lost a lane so should turn to the side.
+        self.turn_side: str = "straight"
         # Lock for the trajectory updates.
         self.trajectory_lock = threading.Lock()
 
@@ -132,6 +138,8 @@ class PurePursuit(Node):
             ])
             # rotate all points into the new vehicle frame
             self.traj_pts = self.traj_pts @ R
+            # Rotates the trajectory vector into the new vehicle frame.
+            self.traj_vec = self.traj_vec @ R
             # Recalculates the deviation from the trajectory.
             self.deviation = np.mean(self.traj_pts[:, 1])
 
@@ -202,11 +210,18 @@ class PurePursuit(Node):
         #     # Renormalizes to the distance of the lookahead.
         #     goal_point *= self.lookahead / np.linalg.norm(goal_point)
 
+        # Issues slight steering correction to the side.
+        if self.turn_side == "left":
+            goal_point[1] += self.lane_correction * self.lookahead
+        elif self.turn_side == "right":
+            goal_point[1] -= self.lane_correction * self.lookahead
+
         # Calculate the curvature 
         gamma: float = 2 * goal_point[1] / (self.lookahead ** 2)
 
         # Calculate the steering angle.
         steering_angle: float = np.arctan(gamma * self.wheelbase_length)
+
         # Calculates the speed proportional to the gamma.
         speed: float = max(self.speed * (
             1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))
@@ -226,15 +241,32 @@ class PurePursuit(Node):
         Sets a new trajectory to follow.
         """
         self.get_logger().info(f"Received new trajectory, {len(msg.poses)} points")
+
         with self.trajectory_lock:
-            self.trajectory.clear()
-            # Converts from poses to the utility trajectory class.
-            self.trajectory.fromPoseArray(msg)
-            self.traj_pts: npt.NDArray[np.float64] = np.array(self.trajectory.points)
-            # Notes the deviation from the trajectory.
-            self.deviation = msg.deviation
-            # flag to check that we have a trajectory.
-            self.initialized_traj = True
+            self.turn_side = msg.turn_side
+            if msg.turn_side != "straight":
+                # If the trajectory is not straight, stop the vehicle.
+                self.get_logger().warning("Trajectory is not straight, extrapolating.")
+                # Stops if no trajectory is initialized.
+                if not self.initialized_traj:
+                    self.get_logger().warning("No trajectory initialized, stopping.")
+                    self.publish_drive_cmd(0.0, 0.0)
+                    return
+                # Otherwise, extrapolate the trajectory.
+                else:
+                    # Extends the trajectory by the lookahead distance.
+                    self.traj_pts[1] += self.traj_vec * self.lookahead
+            else:
+                self.trajectory.clear()
+                # Converts from poses to the utility trajectory class.
+                self.trajectory.fromPoseArray(msg)
+                self.traj_pts: npt.NDArray[np.float64] = np.array(self.trajectory.points)
+                self.traj_vec: npt.NDArray[np.float64] = self.traj_pts[1] - self.traj_pts[0]
+                self.traj_vec /= np.linalg.norm(self.traj_vec)
+                # Notes the deviation from the trajectory.
+                self.deviation = msg.deviation
+                # flag to check that we have a trajectory.
+                self.initialized_traj = True
         # Publish the trajectory for visualization.
         self.trajectory.publish_viz(duration=0.0)
 
