@@ -110,9 +110,9 @@ class PathPlan(Node):
             self.get_logger().warn("Map not found!")
             return
         
-        self.plan_path(self.start_pose, self.goal_pose, self.map)
+        self.plan_path(self.start_pose, self.goal_pose)
 
-    def plan_path(self, start_point, end_point, map):
+    def plan_path(self, start_point, end_point):
 
         start_time = time.time()
         # In world coordinates
@@ -126,7 +126,7 @@ class PathPlan(Node):
         self.get_logger().info(f"Start grid: {start_map}, Map value: {self.map[start_map[1], start_map[0]]}")
         self.get_logger().info(f"Goal grid: {end_map}, Map value: {self.map[end_map[1], end_map[0]]}")
 
-        path = self.a_star_search(start_map, end_map, map)  # returns (y, x)
+        path = self.a_star_search(start_map, end_map, self.map)  # returns (y, x) 
         # self.get_logger().info(f"Path: {path}")
         if path is None or len(path) == 0:
             self.get_logger().error("No path found!")

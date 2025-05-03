@@ -3,5 +3,5 @@
     </node>
 </launch>
 <launch>
-    <node pkg="final_challenge2025" exec="safety_controller" name="safety_controller" output="screen">
+    <node pkg="final_challenge2025" exec="state_machine" name="state_machine" output="screen">
 </node>

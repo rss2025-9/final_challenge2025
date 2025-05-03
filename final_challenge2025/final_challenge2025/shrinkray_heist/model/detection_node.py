@@ -41,6 +41,8 @@ class DetectorNode(Node):
         # Publish the image
         self.publisher.publish(ros_img)
         
+        self.banana_counter = 0
+
         detection_msg = self.check_states(image, predictions)
         self.states_publisher.publish(detection_msg)
 
@@ -51,13 +53,13 @@ class DetectorNode(Node):
         msg.person_state = 'NONE'
         for (x1, y1, x2, y2), label in preds:
             x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
-            roi = frame[y1:y2, x1:x2]
-            if roi.size == 0:
+            region = frame[y1:y2, x1:x2]
+            if region.size == 0:
                 continue
 
             if label == 'traffic_light':
-                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                area = roi.shape[0] * roi.shape[1]
+                hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
+                area = region.shape[0] * region.shape[1]
                 # red
                 m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
                 m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
@@ -71,11 +73,15 @@ class DetectorNode(Node):
                     msg.traffic_light_state = 'GREEN'
 
             elif label == 'banana':
-                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                area = roi.shape[0] * roi.shape[1]
-                m = cv2.inRange(hsv, (20, 50, 50), (30, 255, 255))
-                yellow_count = cv2.countNonZero(m)
-                if yellow_count > 0.1 * area:
+                # hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
+                # area = region.shape[0] * region.shape[1]
+                # m = cv2.inRange(hsv, (20, 50, 50), (30, 255, 255))
+                # yellow_count = cv2.countNonZero(m)
+                # if yellow_count > 0.1 * area:
+                    # self.banana_counter += 1
+                self.banana_counter += 1
+                if self.banana_counter >= 5: 
+                    self.banana_counter = 0
                     msg.banana_state = 'DETECTED'
 
             elif label == 'person':
