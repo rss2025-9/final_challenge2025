@@ -9,7 +9,6 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseArray, PoseStamped
 from cv_bridge import CvBridge
 
-from shrinkray_heist.model.detector_msgs.msg import DetectionArray
 from final_challenge2025.particle_filter import ParticleFilter
 from final_challenge2025.trajectory_planner import PathPlan
 from final_challenge2025.trajectory_follower import PurePursuit
@@ -77,9 +76,9 @@ class StateMachineNode(Node):
             self.state = HeistState.FOLLOW_TRAJ
         if msg.banana_state == 'DETECTED':
             self.state = HeistState.PARK
-        if msg.person_state == 'DETECTED':
-            self.get_logger().info('Human detected - stopping temporarily')
-            # Could pause controller or use safety state
+        # if msg.person_state == 'DETECTED':
+        #     self.get_logger().info('Human detected - stopping temporarily')
+        #     # Could pause controller or use safety state
 
     def publish_sweep_motion(self, direction: int = 1):
         sweep_msg = AckermannDriveStamped()
@@ -97,7 +96,10 @@ class StateMachineNode(Node):
 
             case HeistState.PLAN_TRAJ:
                 self.get_logger().info(f'Planning to goal #{self.goal_idx}')
-                self.planner.plan_path(self.goals[self.goal_idx])
+                if self.goal_idx == 0: 
+                    self.planner.plan_path(self.intial_pose, self.goals[self.goal_idx])
+                else:
+                    self.planner.plan_path(self.goals[self.goal_idx - 1], self.goals[self.goal_idx])
                 self.state = HeistState.FOLLOW_TRAJ
 
             case HeistState.FOLLOW_TRAJ:
