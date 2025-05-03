@@ -21,6 +21,7 @@ from final_challenge2025.trajectory_planner import PathPlan
 from final_challenge2025.trajectory_follower import PurePursuit
 from final_challenge2025.wall_follower import WallFollower
 from std_msgs.msg import String
+from ackermann_msgs.msg import AckermannDriveStamped
 
 class HeistState(Enum):
     IDLE = auto()
@@ -83,6 +84,19 @@ class StateMachineNode(Node):
         self.follower = PurePursuit()
         self.wall_follow = WallFollower()
 
+        #for parking at banana
+        self.parking_started = False
+        self.parking_done_time = None
+
+        #for sweep if banana not seen
+        self.sweep_count = 0
+        self.max_sweep_attempts = 3
+        self.sweep_start_time = None
+        self.sweep_duration = 2.0
+        self.sweep_drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
+
+
+
     # intial pose callback 
     def pose_cb(self, msg: PoseStamped):
         self.intial_pose = msg.pose
@@ -94,6 +108,14 @@ class StateMachineNode(Node):
         self.get_logger().info(f'Received goals: {self.goals}')
         if len(self.goals) == 2 and self.state == HeistState.IDLE:
             self.state = HeistState.PLAN_TRAJ1
+
+    def publish_sweep_motion(self, direction: int = 1):
+        #direction: +1 for left, -1 for right
+        sweep_msg = AckermannDriveStamped()
+        sweep_msg.drive.speed = 0.2  # Low forward speed to allow turning
+        sweep_msg.drive.steering_angle = direction * 0.34  # ~20 degrees
+        self.sweep_drive_pub.publish(sweep_msg)
+
 
     # detection callback: YOLO detections
     # def detection_cb(self, msg: TODO):
@@ -134,24 +156,43 @@ class StateMachineNode(Node):
         elif self.state == HeistState.INSPECT1:
             if self.any_detection('banana'):
                 self.get_logger().info('Banana seen #1')
+                self.sweep_count = 0
                 self.state = HeistState.IDENTIFY1
-            else: 
-                pass 
-                # TODO: sweep around to find banana
+            else:
+                if self.sweep_count < self.max_sweep_attempts:
+                    if self.sweep_start_time is None:
+                        self.sweep_start_time = time.time()
+                        self.get_logger().info(f'Sweep #{self.sweep_count+1} started')
+                        self.publish_sweep_motion(direction=1 if self.sweep_count % 2 == 0 else -1)
+                    elif time.time() - self.sweep_start_time > self.sweep_duration:
+                        self.get_logger().info(f'Sweep #{self.sweep_count+1} complete')
+                        self.sweep_count += 1
+                        self.sweep_start_time = None
+                else:
+                    self.get_logger().warn('Banana not found after sweeps, moving on')
+                    self.sweep_count = 0
+                    self.state = HeistState.PLAN_TRAJ2
 
+
+
+        #We assume ParkingController is already running as a separate ROS2 node and banana is being published as a ConeLocation message on /relative_cone
         elif self.state == HeistState.IDENTIFY1:
             if self.any_detection('banana'):
-                self.get_logger().info('Identified banana #1')
-                # TODO: add parking controller to park in front of banana
+                self.get_logger().info('Identified banana #1, initiating parking')
+                self.parking_started = True
+                self.parking_done_time = time.time() + 5.0
                 self.state = HeistState.PICKUP1
             else:
                 self.state = HeistState.INSPECT1
 
         elif self.state == HeistState.PICKUP1:
-            if self.pickup_time is None:
-                self.pickup_time = time.time(); self.get_logger().info('Picking up #1')
-            elif time.time() - self.pickup_time > 5.0:
+            if not self.parking_started:
+                self.get_logger().info('Parking was not started properly')
+                self.state = HeistState.IDENTIFY1
+            elif time.time() >= self.parking_done_time:
+                self.get_logger().info("Parking complete, moving to next goal")
                 self.state = HeistState.PLAN_TRAJ2
+
 
         elif self.state == HeistState.PLAN_TRAJ2:
             self.get_logger().info('Planning to goal #2')
@@ -175,23 +216,43 @@ class StateMachineNode(Node):
 
         elif self.state == HeistState.INSPECT2:
             if self.any_detection('banana'):
+                self.get_logger().info('Banana seen #2')
+                self.sweep_count = 0
                 self.state = HeistState.IDENTIFY2
-            else: 
-                pass
-                # TODO: sweep around to find banana
+            else:
+                if self.sweep_count < self.max_sweep_attempts:
+                    if self.sweep_start_time is None:
+                        self.sweep_start_time = time.time()
+                        self.get_logger().info(f'Sweep #{self.sweep_count+1} started (goal 2)')
+                        self.publish_sweep_motion(direction=1 if self.sweep_count % 2 == 0 else -1)
+                    elif time.time() - self.sweep_start_time > self.sweep_duration:
+                        self.get_logger().info(f'Sweep #{self.sweep_count+1} complete (goal 2)')
+                        self.sweep_count += 1
+                        self.sweep_start_time = None
+                else:
+                    self.get_logger().warn('Banana not found after sweeps at goal 2, returning to start')
+                    self.sweep_count = 0
+                    self.state = HeistState.ESCAPE
+
 
         elif self.state == HeistState.IDENTIFY2:
             if self.any_detection('banana'):
-                # TODO: add parking controller to park in front of banana
+                self.get_logger().info('Identified banana #2, initiating parking')
+                self.parking_started = True
+                self.parking_done_time = time.time() + 5.0
                 self.state = HeistState.PICKUP2
             else:
                 self.state = HeistState.INSPECT2
 
         elif self.state == HeistState.PICKUP2:
-            if self.pickup_time is None:
-                self.pickup_time = time.time(); self.get_logger().info('Picking up #2')
-            elif time.time() - self.pickup_time > 5.0:
+            if not self.parking_started:
+                self.get_logger().info('Parking was not started properly')
+                self.state = HeistState.IDENTIFY2
+            elif time.time() >= self.parking_done_time:
+                self.get_logger().info("Parking complete, returning to start")
                 self.state = HeistState.ESCAPE
+
+
 
         elif self.state == HeistState.ESCAPE:
             self.get_logger().info('Escaping')
