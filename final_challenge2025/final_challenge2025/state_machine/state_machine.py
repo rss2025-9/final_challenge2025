@@ -29,6 +29,7 @@ class HeistState(Enum):
     COMPLETE = auto()
 
 class StateMachineNode(Node):
+    # constructor 
     def __init__(self):
         super().__init__('state_machine')
         self.get_logger().info('Heist State Machine Initialized')
@@ -149,6 +150,7 @@ class StateMachineNode(Node):
                         self.state = HeistState.PLAN_TRAJ
                 else:
                     self.get_logger().info(f'Waiting during pickup: {elapsed:.1f}s')
+
 
             case HeistState.ESCAPE:
                 self.get_logger().info('Escaping')

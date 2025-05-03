@@ -5,11 +5,7 @@ from rclpy.node import Node
 import numpy as np
 
 import cv2
-from cv_bridge import CvBridge, CvBridgeError
 
-from std_msgs.msg import String
-from sensor_msgs.msg import Image
-from ackermann_msgs.msg import AckermannDriveStamped
 from visualization_msgs.msg import Marker
 from final_interfaces.msg import TrajInfo, WorldTrajInfo
 from geometry_msgs.msg import Pose
@@ -78,7 +74,7 @@ class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
 
-        self.lane_pub = self.create_publisher(WorldTrajInfo, "/relative_lane", 10)
+        self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
         self.lane_px_sub = self.create_subscription(TrajInfo, "/relative_lane_px", self.lane_detection_callback, 1)
 
@@ -124,9 +120,6 @@ class HomographyTransformer(Node):
             relative_traj.poses.append(relative_xy_pose)
 
         relative_traj.deviation = msg.deviation
-
-        self.draw_marker(x, y, "zed_left_camera_frame")
-        self.get_logger().info(f"relative cone positions in real world (meters): {x}, {y}")
         self.lane_pub.publish(relative_traj)
 
     def transformUvToXy(self, u, v):
@@ -150,9 +143,9 @@ class HomographyTransformer(Node):
         y = homogeneous_xy[1, 0]
         return x, y
 
-    def draw_marker(self, cone_x, cone_y, message_frame):
+    def draw_marker(self, x, y, message_frame):
         """
-        Publish a marker to represent the cone in rviz.
+        Publish a marker to represent the waypoint in rviz.
         (Call this function if you want)
         """
         marker = Marker()
@@ -166,8 +159,8 @@ class HomographyTransformer(Node):
         marker.color.r = 1.0
         marker.color.g = .5
         marker.pose.orientation.w = 1.0
-        marker.pose.position.x = cone_x
-        marker.pose.position.y = cone_y
+        marker.pose.position.x = x
+        marker.pose.position.y = y
         self.marker_pub.publish(marker)
 
 def main(args=None):

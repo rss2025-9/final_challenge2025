@@ -3,7 +3,7 @@ import os
 from color_segmentation import cd_color_segmentation
 
 # Path to the folder of racetrack_images
-image_folder = "../../racetrack_images/lane_1"
+image_folder = "../../../racetrack_images/lane_1"
 
 # Get all image filenames
 image_filenames = [f for f in os.listdir(image_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]

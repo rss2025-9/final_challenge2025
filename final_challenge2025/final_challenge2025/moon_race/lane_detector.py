@@ -2,17 +2,18 @@
 
 import rclpy
 from rclpy.node import Node
-import numpy as np
 
 import cv2
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
+
+import numpy as np
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Point, Pose #geometry_msgs not in CMake file
+from geometry_msgs.msg import Pose #geometry_msgs not in CMake file
 from final_interfaces.msg import TrajInfo
 
 # import color segmentation algorithm; call this function in ros_image_callback
-from color_segmentation import cd_color_segmentation
+from .color_segmentation import cd_color_segmentation
 
 
 class LaneDetector(Node):
@@ -66,6 +67,11 @@ class LaneDetector(Node):
             y1 += crop_y_start
             y2 += crop_y_start
 
+            # visualize filtered lines in debugging image
+            pt1 = (int(x1), int(y1))
+            pt2 = (int(x2), int(y2))
+            cv2.line(image, pt1, pt2, color=(255, 0, 0), thickness=2)  # blue lines
+
             # middle x-coordinate of the line
             mid_x = (x1 + x2) // 2
 
@@ -76,30 +82,45 @@ class LaneDetector(Node):
                 right_lines.append([[x1, y1, x2, y2]])
             
         # get inner left and right lines
-        left_inner_line = self.choose_inner(left_lines, "left")
-        right_inner_line = self.choose_inner(right_lines, "right")
+        left_inner_line = self.choose_inner(left_lines, "left")[0]
+        right_inner_line = self.choose_inner(right_lines, "right")[0]
+
+        if left_inner_line:
+            self.draw_line(image, left_inner_line, (0, 255, 255))
+
+        if right_inner_line:
+            self.draw_line(image, right_inner_line, (0, 255, 255))
+
 
         # get equally placed points from left and right lines
         num_points = 10     # can tune this value
-        left_points = []
-        right_points = []
-
-        for i in range(num_points):
-            t = i / (num_points - 1)    # ranges from 0 to 1
-            x_left = (1 - t) * left_inner_line[0][0] + t * left_inner_line[0][2]    # linear interpolation
-            y_left = (1 - t) * left_inner_line[0][1] + t * left_inner_line[0][3]
-            left_points.append((x_left, y_left))
-
-            x_right = (1 - t) * right_inner_line[0][0] + t * right_inner_line[0][2]
-            y_right = (1 - t) * right_inner_line[0][1] + t * right_inner_line[0][3]
-            right_points.append((x_right, y_right))
-        
         center_points = []
-        # get an array of center points
-        for (xl, yl), (xr, yr) in zip(left_points, right_points):
-            x_center = (xl + xr) / 2
-            y_center = (yl + yr) / 2
-            center_points.append((x_center, y_center))
+
+        # get the start and end points of the left and right lines
+        left_start = np.array(left_inner_line[0:2])
+        left_end = np.array(left_inner_line[2:4])
+        right_start = np.array(right_inner_line[0:2])
+        right_end = np.array(right_inner_line[2:4])
+        
+        # From point perspective left vec should be going to the right.
+        # From point perspective right vec should be going to the left.
+        left_vec = (left_end - left_start) / num_points
+        right_vec = (right_end - right_start) / num_points
+        if left_vec[0] < 0:
+            left_vec = -left_vec
+            left_start, left_end = left_end, left_start
+        if right_vec[0] > 0:
+            right_vec = -right_vec
+            right_start, right_end = right_end, right_start
+        
+        for i in range(num_points):
+            # Calculate the left and right line points
+            left_pt = left_start + i * left_vec
+            right_pt = right_start + i * right_vec
+
+            # get the center point of the left and right lines
+            center = (left_pt + right_pt) / 2
+            center_points.append(center)
 
         # get the x coordinate of the bottom of the center line
         bottom_center = max(center_points, key=lambda p: p[1])
@@ -123,20 +144,26 @@ class LaneDetector(Node):
         self.lane_pub.publish(center_poses)
 
         # publish debugging image
+        for i, (u, v) in enumerate(center_points):
+            cv2.circle(image, (int(u), int(v)), radius=4, color=(i * 10, i * 10, i * 10), thickness=-1)
         debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
         self.debug_pub.publish(debug_msg)
 
     # helper function to choose the inner line of the track
-    def choose_inner(lines, side):
+    def choose_inner(self, lines, side):
             if not lines:
                 return None
             # choose the line with maximum mid_x for left lines
             if side == "left":
-                return max(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
+                return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             # choose the line with minimum mid_x for right lines
             if side == "right":
-                return min(lines, key=lambda l: (l[0][0] + l[0][2]) // 2)
+                return min(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             
+    # helper function to draw line
+    def draw_line(self, image, line, color):
+        x1, y1, x2, y2 = line
+        cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)), color, thickness=2)
 
 def main(args=None):
     rclpy.init(args=args)

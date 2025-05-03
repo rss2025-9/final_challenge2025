@@ -2,15 +2,10 @@ import cv2
 import numpy as np
 
 #################### X-Y CONVENTIONS #########################
-# 0,0  X  > > > > >
-#
+# 0,0  X  > > >
 #  Y
-#
 #  v  This is the image. Y increases downwards, X increases rightwards
 #  v  
-#  v
-#  v
-#  v
 ###############################################################
 
 
@@ -30,21 +25,20 @@ def cd_color_segmentation(img, template):
 		img: np.3darray; the input image with an object to be detected. BGR.
 		template_file_path; Not required, but can optionally be used to automate setting hue filter values.
 	Return:
-		bbox: ((x1, y1), (x2, y2)); the bounding box of the cone, unit in px
-				(x1, y1) is the top left of the bbox and (x2, y2) is the bottom right of the bbox
+		Return lines and y-coordinate of the cropped image
 	"""
 
 	# crop the image to focus on the lower half
 	height = img.shape[0]
-	crop_y_start = height // 2  # crop down the image (tune this to crop more)
+	crop_y_start = height // 3  # crop down the image (tune this to crop more)
 	cropped_img = img[crop_y_start:, :, :]  # y, x, channel
 
 	# convert the image from RGB to HSV
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for orange color
-	lower_bound = np.array([0, 0, 160])	# hue, saturation (intensity), value (brightness)
-	upper_bound = np.array([179, 80, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
+	lower_bound = np.array([30, 2, 135])	# hue, saturation (intensity), value (brightness)
+	upper_bound = np.array([255, 30, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
 	mask = cv2.inRange(hsv_object, lower_bound, upper_bound)
@@ -65,10 +59,12 @@ def cd_color_segmentation(img, template):
 	
     # Line detection
 	# rho is in pixels, theta is in radians
-	lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=15, maxLineGap=10)
+	lines = cv2.HoughLinesP(
+		edges, rho=1, theta=np.pi/180, threshold=10, minLineLength=70, maxLineGap=20
+	)
 	
 	filtered_lines = []
-	threshold_angle = 23	# in degrees (tune this value if needed)
+	threshold_angle = 20	# in degrees (tune this value if needed)
 	for line in lines:
 		x1, y1, x2, y2 = line[0]
 		dx = x2 - x1
@@ -80,19 +76,6 @@ def cd_color_segmentation(img, template):
 		
 		if angle > threshold_angle:
 			filtered_lines.append([[x1, y1, x2, y2]])
-	
-    # draw the line
-	# if lines is not None: 
-	# 	for line in lines:
-	# 		x1, y1, x2, y2 = line[0]
-	# 		y1 += crop_y_start
-	# 		y2 += crop_y_start
-	# 		cv2.line(img, (x1, y1), (x2, y2), (255, 0, 0), 3)
-
-	# cv2.imshow("Segmented Output", result)
-	# cv2.imshow("image", img)
-	# cv2.waitKey(0)
-	# cv2.destroyAllWindows()
 
 	# Return lines and y-coordinate of the cropped image
 	return filtered_lines, crop_y_start, result
