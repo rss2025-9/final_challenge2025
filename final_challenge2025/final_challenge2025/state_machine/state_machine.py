@@ -15,6 +15,7 @@ from final_challenge2025.trajectory_follower import PurePursuit
 from final_challenge2025.wall_follower import WallFollower
 from final_interfaces.msg import DetectionStates
 from ackermann_msgs.msg import AckermannDriveStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray
 
 class HeistState(Enum):
     IDLE = auto()
@@ -41,7 +42,7 @@ class StateMachineNode(Node):
         self.bridge = CvBridge()
 
         self.create_subscription(PoseArray, '/shrinkray_part', self.goals_cb, 1)
-        self.create_subscription(PoseStamped, '/initialpose', self.pose_cb, 1)
+        self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.pose_cb, 1)
         self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1)
         self.create_timer(0.1, self.on_timer)
 
@@ -56,7 +57,8 @@ class StateMachineNode(Node):
         self.max_sweep_attempts = 3
         self.sweep_start_time = None
         self.sweep_duration = 2.0
-        self.sweep_drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
+
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
 
     def pose_cb(self, msg: PoseStamped):
         self.intial_pose = msg.pose
@@ -84,7 +86,7 @@ class StateMachineNode(Node):
         sweep_msg = AckermannDriveStamped()
         sweep_msg.drive.speed = 0.2
         sweep_msg.drive.steering_angle = direction * 0.34
-        self.sweep_drive_pub.publish(sweep_msg)
+        self.drive_pub.publish(sweep_msg)
 
     def on_timer(self):
         match self.state:
@@ -110,6 +112,11 @@ class StateMachineNode(Node):
                     self.state = HeistState.SCOUT
 
             case HeistState.WAIT_TRAFFIC:
+                # publish stop cmd
+                msg = AckermannDriveStamped()
+                msg.drive.speed = 0.0
+                msg.drive.steering_angle = 0.0
+                self.drive_pub.publish(msg)
                 self.get_logger().info('No green light, waiting')
 
             case HeistState.SCOUT:
