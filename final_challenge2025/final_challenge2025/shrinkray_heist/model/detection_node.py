@@ -43,10 +43,10 @@ class DetectorNode(Node):
         
         self.banana_counter = 0
 
-        detection_msg = self.check_states(image, predictions)
+        detection_msg = self.check_states(image, predictions, out)
         self.states_publisher.publish(detection_msg)
 
-    def check_states(self, frame, preds):
+    def check_states(self, frame, preds, out):
         msg = DetectionStates()
         msg.traffic_light_state = 'NONE'
         msg.banana_state = 'NONE'
@@ -83,6 +83,10 @@ class DetectorNode(Node):
                 if self.banana_counter >= 5: 
                     self.banana_counter = 0
                     msg.banana_state = 'DETECTED'
+                    # Save the image with the banana    
+                    save_path = f"{os.path.dirname(__file__)}/banana_output.png"
+                    out.save(save_path)
+                    print(f"Saved banana pic to {save_path}!")
 
             elif label == 'person':
                 msg.person_state = 'DETECTED'
