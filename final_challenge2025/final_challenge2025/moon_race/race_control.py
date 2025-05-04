@@ -28,7 +28,7 @@ class PurePursuit(Node):
         self.declare_parameter('lookahead', 1.2)
         self.declare_parameter('speed', 1.0)
         self.declare_parameter('wheelbase_length', 0.3302)
-        self.declare_parameter('lane_correction', 0.2)
+        self.declare_parameter('lane_correction', 0.8)
 
         self.lookahead: float = self.get_parameter('lookahead').get_parameter_value().double_value
         self.speed: float = self.get_parameter('speed').get_parameter_value().double_value
@@ -173,12 +173,12 @@ class PurePursuit(Node):
         goal_point: npt.NDArray[np.float64]
         # If no points are ahead.
         if not np.any(forwards):
-            self.get_logger().warning("No points ahead of the vehicle.")
+            self.get_logger().warning("No points ahead of the vehicle.", throttle_duration_sec = 1)
             # Get the closest point in the trajectory.
             closest_idx = np.argmin(distances)
             # If the closest point is the last one, stop.
             if closest_idx == len(traj_pts) - 1:
-                self.get_logger().warning("Last point in trajectory reached, stopping.")
+                self.get_logger().warning("Last point in trajectory reached, stopping.", throttle_duration_sec = 1)
                 self.publish_drive_cmd(0.0, 0.0)
                 return
             # Otherwise, set the goal point to the closest point.
@@ -227,10 +227,10 @@ class PurePursuit(Node):
             1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))
         ), 1.0)
         # Publish the drive command.
-        self.get_logger().info(
-            f"Steering angle: {steering_angle:.2f}, speed: {speed:.2f}, "
-            f"deviation: {self.deviation:.2f}"
-        )
+        # self.get_logger().info(
+        #     f"Steering angle: {steering_angle:.2f}, speed: {speed:.2f}, "
+        #     f"deviation: {self.deviation:.2f}"
+        # )
         self.publish_drive_cmd(speed, steering_angle)
 
         # Update the trajectory given the commanded motion.
@@ -240,7 +240,7 @@ class PurePursuit(Node):
         """
         Sets a new trajectory to follow.
         """
-        self.get_logger().info(f"Received new trajectory, {len(msg.poses)} points")
+        # self.get_logger().info(f"Received new trajectory, {len(msg.poses)} points")
 
         with self.trajectory_lock:
             self.turn_side = msg.turn_side

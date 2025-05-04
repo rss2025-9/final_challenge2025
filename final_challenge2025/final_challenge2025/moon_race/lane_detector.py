@@ -58,8 +58,30 @@ class LaneDetector(Node):
         right_img = image[:, width // 2 - overlap:]
 
         # get the bounding box from color_segmentation.py
-        left_lines_raw, crop_y_start, result = cd_color_segmentation(left_img, None)
-        right_lines_raw, crop_y_start, result = cd_color_segmentation(right_img, None)
+        left_lines_raw, right_lines_raw = None, None
+        # Sorts the point in each line so vectors always point up.
+        sort_lines = lambda raw: [[line[0][0], line[0][1], line[0][2], line[0][3]] if line[0][1] >= line[0][3] 
+                                    else [line[0][2], line[0][3], line[0][0], line[0][1]]
+                                    for line in raw]
+        try:
+            left_lines_raw, crop_y_start, result = cd_color_segmentation(left_img, None)
+        except TypeError:
+            self.get_logger().warning(f"Missing lines on the left")
+            return
+        if left_lines_raw != None:
+            left_lines_raw = sort_lines(left_lines_raw)
+            # For lines going left, dx should be positive
+            left_lines_raw = [line for line in left_lines_raw if (line[2] - line[0]) >= 0]
+        
+        try:
+            right_lines_raw, crop_y_start, result = cd_color_segmentation(right_img, None)
+        except TypeError:
+            self.get_logger().warning(f"Missing lines on the right")
+            return
+        if right_lines_raw != None:
+            right_lines_raw = sort_lines(right_lines_raw)
+            # For lines going right, dx should be negative
+            right_lines_raw = [line for line in right_lines_raw if (line[2] - line[0]) <= 0]
 
         # ensure the lane is detected
         if not left_lines_raw and not right_lines_raw:
@@ -75,14 +97,14 @@ class LaneDetector(Node):
         # offset right lines to align with the full image
         offset_x_right = width // 2 - overlap
         for line in right_lines_raw:
-            line[0][0] += offset_x_right    # x1
-            line[0][2] += offset_x_right    # x2
+            line[0] += offset_x_right    # x1
+            line[2] += offset_x_right    # x2
 
         left_lines = []
         right_lines = []
 
         for line in left_lines_raw + right_lines_raw:
-            x1, y1, x2, y2 = line[0]
+            x1, y1, x2, y2 = line
             y1 += crop_y_start
             y2 += crop_y_start
 
