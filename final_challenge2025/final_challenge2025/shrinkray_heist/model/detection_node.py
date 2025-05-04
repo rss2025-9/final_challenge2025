@@ -64,20 +64,18 @@ class DetectorNode(Node):
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
                 # red
-                # m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
-                # m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
-                # red_count = cv2.countNonZero(m1) + cv2.countNonZero(m2)
+                m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
+                m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
+                red_count = cv2.countNonZero(m1) + cv2.countNonZero(m2)
                 # green
                 mg = cv2.inRange(hsv, (40, 50, 50), (90, 255, 255))
                 green_count = cv2.countNonZero(mg)
-                # if red_count > 0.1 * area:
-                #     msg.traffic_light_state = 'RED'
-                # elif green_count > 0.1 * area:
-                #     msg.traffic_light_state = 'GREEN'
-                if green_count > 0.1 * area:
+                if red_count > 0.1 * area:
+                    msg.traffic_light_state = 'RED'
+                elif green_count > 0.1 * area:
                     msg.traffic_light_state = 'GREEN'
                 else:
-                    msg.traffic_light_state = 'NOT GREEN'
+                    msg.traffic_light_state = 'NONE'
 
             elif label == 'banana':
                 # hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)

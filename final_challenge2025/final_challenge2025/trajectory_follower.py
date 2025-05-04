@@ -47,9 +47,7 @@ class PurePursuit(Node):
             Odometry, self.odom_topic,
             self.pose_callback, 1
         )
-        self.drive_pub = self.create_publisher(
-            AckermannDriveStamped, self.drive_topic, 1
-        )
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """

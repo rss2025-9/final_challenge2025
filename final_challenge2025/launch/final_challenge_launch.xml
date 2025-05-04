@@ -1,10 +1,17 @@
 <launch>
-    <node pkg="final_challenge2025" exec="particle_filter" name="particle_filter" output="screen"></node>
+    <node pkg="final_challenge2025" exec="particle_filter" name="particle_filter" output="screen">
+    <param from="$(find-pkg-share final_challenge2025)/config/params.yaml" />
+    </node>
     <node pkg="final_challenge2025" exec="safety_controller" name="safety_controller" output="screen"></node>
-    <node pkg="final_challenege2025" exec="detector" name="detector" output="screen"></node>
-    <node pkg="final_challenge2025" exec="trajectory_planner" name="trajectory_planner" output="screen"></node>
-    <node pkg ="final_challenge2025" exec="trajectory_builder" name="trajectory_builder" output="screen"></node>
-    <node pkg="final_challenge2025" exec="trajectory_follower" name="trajectory_follower" output="screen"></node>
-    <node pkg="final_challenge2025" exec="trajectory_loader" name="trajectory_loader" output="screen"></node>
+    <node pkg="final_challenge2025" exec="detector" name="detector" output="screen"></node>
+    <node pkg="final_challenge2025" exec="trajectory_planner" name="trajectory_planner" output="screen">
+    <param from="$(find-pkg-share final_challenge2025)/config/params.yaml" />
+    </node>
+    <!-- <node pkg ="final_challenge2025" exec="trajectory_builder" name="trajectory_builder" output="screen"></node> -->
+    <node pkg="final_challenge2025" exec="trajectory_follower" name="trajectory_follower" output="screen">
+    <param from="$(find-pkg-share final_challenge2025)/config/params.yaml" />
+    </node>
+    <!-- <node pkg="final_challenge2025" exec="trajectory_loader" name="trajectory_loader" output="screen"></node> -->
     <node pkg="final_challenge2025" exec="state_machine" name="state_machine" output="screen"></node>
+    <node pkg="final_challenge2025" exec="basement_point_publisher" name="basement_point_publisher" output="screen"></node>
 </launch>

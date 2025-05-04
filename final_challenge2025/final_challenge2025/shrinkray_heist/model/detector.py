@@ -99,7 +99,7 @@ class Detector:
         except IOError:
             font = ImageFont.load_default()
 
-        print(f"Labels: {[x[-1] for x in predictions]}")
+        # print(f"Labels: {[x[-1] for x in predictions]}")
 
         if draw_all:
             for (x1, y1, x2, y2), label in predictions:
