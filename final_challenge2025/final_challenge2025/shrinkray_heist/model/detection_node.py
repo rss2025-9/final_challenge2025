@@ -9,6 +9,8 @@ import os
 import numpy as np
 import cv2
 from final_interfaces.msg import DetectionStates
+from ackermann_msgs.msg import AckermannDriveStamped
+
 
 class DetectorNode(Node):
     def __init__(self):
@@ -19,6 +21,7 @@ class DetectorNode(Node):
         self.bridge = CvBridge()
 
         self.states_publisher = self.create_publisher(DetectionStates, "/detector/states", 1)
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 1)
 
         self.get_logger().info("Detector Initialized")
 
@@ -39,7 +42,7 @@ class DetectorNode(Node):
         ros_img.header = img_msg.header
 
         # Publish the image
-        self.publisher.publish(ros_img)
+        # self.publisher.publish(ros_img)
         
         self.banana_counter = 0
 
@@ -61,16 +64,20 @@ class DetectorNode(Node):
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
                 # red
-                m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
-                m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
-                red_count = cv2.countNonZero(m1) + cv2.countNonZero(m2)
+                # m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
+                # m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
+                # red_count = cv2.countNonZero(m1) + cv2.countNonZero(m2)
                 # green
                 mg = cv2.inRange(hsv, (40, 50, 50), (90, 255, 255))
                 green_count = cv2.countNonZero(mg)
-                if red_count > 0.1 * area:
-                    msg.traffic_light_state = 'RED'
-                elif green_count > 0.1 * area:
+                # if red_count > 0.1 * area:
+                #     msg.traffic_light_state = 'RED'
+                # elif green_count > 0.1 * area:
+                #     msg.traffic_light_state = 'GREEN'
+                if green_count > 0.1 * area:
                     msg.traffic_light_state = 'GREEN'
+                else:
+                    msg.traffic_light_state = 'NOT GREEN'
 
             elif label == 'banana':
                 # hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
@@ -90,6 +97,11 @@ class DetectorNode(Node):
 
             elif label == 'person':
                 msg.person_state = 'DETECTED'
+
+            else: 
+                msg.traffic_light_state = 'NONE'
+                msg.banana_state = 'NONE'
+                msg.person_state = 'NONE'
 
         return msg
 

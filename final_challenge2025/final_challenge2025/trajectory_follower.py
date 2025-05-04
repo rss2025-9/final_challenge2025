@@ -12,8 +12,6 @@ import numpy.typing as npt
 
 from .utils import LineTrajectory
 
-# Imports TrajInfo custom message.
-from final_interfaces.msg import WorldTrajInfo
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
@@ -32,30 +30,17 @@ class PurePursuit(Node):
         self.declare_parameter('lookahead', 1.2)
         self.declare_parameter('speed', 1.0)
         self.declare_parameter('wheelbase_length', 0.3302)
-        # Lane following parameters.
-        self.declare_parameter('lane_width', 0.5)
-        self.declare_parameter('lane_buffer', 0.1)
 
-        # Get the pure pursuit parameters.
         self.lookahead: float = self.get_parameter('lookahead').get_parameter_value().double_value
         self.speed: float = self.get_parameter('speed').get_parameter_value().double_value
         self.wheelbase_length: float = self.get_parameter('wheelbase_length').get_parameter_value().double_value
 
-        # Lane following parameters.
-        self.lane_width: float = self.get_parameter('lane_width').get_parameter_value().double_value
-        self.lane_buffer: float = self.get_parameter('lane_buffer').get_parameter_value().double_value
-
-        # Derived parameters.
-        self.max_deviation: float = (self.lane_width / 2) - self.lane_buffer
-        assert self.max_deviation > 0, "Lane buffer is too large for the lane width."
-
         # Subscribers to the planned path and publishers for the drive command.
         self.trajectory: LineTrajectory = LineTrajectory("/followed_trajectory")
-        self.deviation = 0.0
         self.initialized_traj = False
 
-        self.midpoint_sub = self.create_subscription(
-            WorldTrajInfo, "/trajectory/midpoint",
+        self.traj_sub = self.create_subscription(
+            PoseArray, "/trajectory/current",
             self.trajectory_callback, 1
         )
         self.odom_sub = self.create_subscription(
@@ -172,16 +157,6 @@ class PurePursuit(Node):
 
         # Rotates the goal point to the vehicle's frame.
         goal_point = goal_point @ rotation_matrix.T
-        # If the deviation is significant, turn harder to the side.
-        if np.abs(self.deviation) > self.max_deviation:
-            # Gets how far into the red we are from the safe lane zone.
-            deviation_delta: float = np.abs(self.deviation) - self.max_deviation
-            # Feeds the deviation delta into a tanh function to get a bounded correction.
-            correction: float = np.tanh((np.sign(self.deviation) * deviation_delta) / self.max_deviation)
-            # Applies the correction to the goal point.
-            goal_point[1] += correction
-            # Renormalizes to the distance of the lookahead.
-            goal_point *= self.lookahead / np.linalg.norm(goal_point)
 
         # Calculate the curvature 
         gamma: float = 2 * goal_point[1] / (self.lookahead ** 2)
@@ -200,8 +175,6 @@ class PurePursuit(Node):
         # Converts from poses to the utility trajectory class.
         self.trajectory.fromPoseArray(msg)
         self.trajectory.publish_viz(duration=0.0)
-        # Notes the deviation from the trajectory.
-        self.deviation = msg.deviation
         # flag to check that we have a trajectory.
         self.initialized_traj = True
 
