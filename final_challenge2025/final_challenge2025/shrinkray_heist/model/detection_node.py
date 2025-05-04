@@ -42,7 +42,7 @@ class DetectorNode(Node):
         ros_img.header = img_msg.header
 
         # Publish the image
-        # self.publisher.publish(ros_img)
+        self.publisher.publish(ros_img)
         
         self.banana_counter = 0
 
@@ -60,7 +60,7 @@ class DetectorNode(Node):
             if region.size == 0:
                 continue
 
-            if label == 'traffic_light':
+            if label == 'traffic light':
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
                 # red
@@ -95,11 +95,6 @@ class DetectorNode(Node):
 
             elif label == 'person':
                 msg.person_state = 'DETECTED'
-
-            else: 
-                msg.traffic_light_state = 'NONE'
-                msg.banana_state = 'NONE'
-                msg.person_state = 'NONE'
 
         return msg
 
