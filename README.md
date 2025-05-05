@@ -68,10 +68,9 @@ Here are the details of the challenge:
 * You should escape Vector's fortress and return to the starting location
 
 ***!!!UPDATED!!!*** Things to note: 
-* The bananas will be ***propped up on the ground*** (so homography and YOLO should both work)
 * Successful pickup entails stopping within ***1m*** of the banana and saving the image with the bounding box
    * If you are having trouble doing both, prioritize ***saving the image***.
-* We will choose two points randomly on the map. However ***these points will be similar to the ones marked in both the image and in real life*** 
+* The bananas will be ***propped up on the ground*** (so homography and YOLO should both work)
 * You should stop once you see the red light, but you can go once you stop seeing the red light (you ***do not*** need to detect a green light)
 * You can return to start in one of 2 ways:
    * Go back via your original path. In this case, the TA crossing and surveillance light are ***bidirectional*** -- you will need to pass them again.
