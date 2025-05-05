@@ -123,8 +123,8 @@ class PathPlan(Node):
 
         start_map = self.world_to_map(start_x, start_y) 
         end_map = self.world_to_map(end_x, end_y)
-        self.get_logger().info(f"Start grid: {start_map}, Map value: {self.map[start_map[1], start_map[0]]}")
-        self.get_logger().info(f"Goal grid: {end_map}, Map value: {self.map[end_map[1], end_map[0]]}")
+        # self.get_logger().info(f"Start grid: {start_map}, Map value: {self.map[start_map[1], start_map[0]]}")
+        # self.get_logger().info(f"Goal grid: {end_map}, Map value: {self.map[end_map[1], end_map[0]]}")
 
         path = self.a_star_search(start_map, end_map, self.map)  # returns (y, x) 
         # self.get_logger().info(f"Path: {path}")

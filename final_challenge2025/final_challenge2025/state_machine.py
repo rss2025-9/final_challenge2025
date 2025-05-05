@@ -18,7 +18,7 @@ from final_interfaces.msg import DetectionStates
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 
 class HeistState(Enum):
     IDLE = auto()
@@ -54,6 +54,7 @@ class StateMachineNode(Node):
 
         self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 10)
+        self.state_publish = self.create_publisher(String, "/state", 10)
 
         self.create_timer(0.1, self.on_timer)
 
@@ -111,6 +112,10 @@ class StateMachineNode(Node):
         self.drive_pub.publish(sweep_msg)
 
     def on_timer(self):
+        curr_state = String()
+        curr_state.data = str(self.state)
+        self.state_publish.publish(curr_state)
+        # self.get_logger().info(str(self.state))
         match self.state:
             case HeistState.IDLE:
                 # self.get_logger().info('Waiting for initial pose and goals')
@@ -165,22 +170,20 @@ class StateMachineNode(Node):
                 # self.get_logger().info('No green light, waiting')
 
             case HeistState.SCOUT:
-                self.state = HeistState.PARK
-                # if self.sweep_count < self.max_sweep_attempts:
-                #     if self.sweep_start_time is None:
-                #         self.sweep_start_time = time.time()
-                #         direction = 1 if self.sweep_count % 2 == 0 else -1
-                #         self.publish_sweep_motion(direction)
-                #         self.get_logger().info(f'Sweep #{self.sweep_count + 1} started')
-                #     elif time.time() - self.sweep_start_time > self.sweep_duration:
-                #         self.get_logger().info(f'Sweep #{self.sweep_count + 1} complete')
-                #         self.sweep_count += 1
-                #         self.sweep_start_time = None
-                # else:
-                #     self.get_logger().warn('Banana not found after sweeps, continuing')
-                #     self.sweep_count = 0
-                #     self.state = HeistState.PLAN_TRAJ
-                #     self.goal_idx += 1
+                if self.sweep_count < self.max_sweep_attempts:
+                    if self.sweep_start_time is None:
+                        self.sweep_start_time = time.time()
+                        direction = 1 if self.sweep_count % 2 == 0 else -1
+                        self.publish_sweep_motion(direction)
+                        self.get_logger().info(f'Sweep #{self.sweep_count + 1} started')
+                    elif time.time() - self.sweep_start_time > self.sweep_duration:
+                        self.get_logger().info(f'Sweep #{self.sweep_count + 1} complete')
+                        self.sweep_count += 1
+                        self.sweep_start_time = None
+                else:
+                    self.get_logger().warn('Banana not found after sweeps, continuing')
+                    self.sweep_count = 0
+                    self.state = HeistState.PLAN_TRAJ
 
             case HeistState.PARK:
                 if self.parking_done_time is None:
