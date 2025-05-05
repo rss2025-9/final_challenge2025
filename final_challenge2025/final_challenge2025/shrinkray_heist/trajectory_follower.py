@@ -13,7 +13,7 @@ import numpy.typing as npt
 from std_msgs.msg import Bool, String
 from enum import Enum, auto
 
-from .utils import LineTrajectory
+from ..utils import LineTrajectory
 
 class HeistState(Enum):
     IDLE = auto()
@@ -75,6 +75,7 @@ class PurePursuit(Node):
         """
         Publishes the drive command to the vehicle.
         """
+
         if self.heist_state is None or self.heist_state != "HeistState.FOLLOW_TRAJ": 
             return
         drive_cmd: AckermannDriveStamped = AckermannDriveStamped()

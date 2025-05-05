@@ -2,7 +2,7 @@
     <node pkg="final_challenge2025" exec="particle_filter" name="particle_filter" output="screen">
     <param from="$(find-pkg-share final_challenge2025)/config/params.yaml" />
     </node>
-    <!-- <node pkg="final_challenge2025" exec="safety_controller" name="safety_controller" output="screen"></node> -->
+    <node pkg="final_challenge2025" exec="safety_controller" name="safety_controller" output="screen"></node>
     <node pkg="final_challenge2025" exec="detector" name="detector" output="screen"></node>
     <node pkg="final_challenge2025" exec="trajectory_planner" name="trajectory_planner" output="screen">
     <param from="$(find-pkg-share final_challenge2025)/config/params.yaml" />
