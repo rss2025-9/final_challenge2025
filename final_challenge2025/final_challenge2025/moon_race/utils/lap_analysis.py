@@ -1,6 +1,7 @@
 # Installs rclpy and other dependencies.
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
 
 # Imports WorldTrajInfo custom message.
 from final_interfaces.msg import WorldTrajInfo
@@ -26,9 +27,15 @@ class LapAnalysis(Node):
         # Topics to be used.
         self.declare_parameter('odom_topic', "/vesc/odom")
         self.odom_topic: str = self.get_parameter('odom_topic').get_parameter_value().string_value
+        self.declare_parameter('wheelbase_length', 0.3302)
+        self.wheelbase_length: float = self.get_parameter('wheelbase_length').get_parameter_value().double_value
+        self.declare_parameter('lookahead', 1.5)
+        self.lookahead: float = self.get_parameter('lookahead').get_parameter_value().double_value
 
         # Saves the last odom time.
         self.last_odom_time = None
+        # Gives the starting odom time.
+        self.start_odom_time = None
 
         # Subscribers to the planned path and publishers for the drive command.
         self.trajectory: LineTrajectory = LineTrajectory("/followed_trajectory")
@@ -71,10 +78,11 @@ class LapAnalysis(Node):
         small yaw change from the bicycle model.
         """
         if self.last_odom_time is None:
-            self.last_odom_time = msg.header.stamp
+            self.start_odom_time = Time.from_msg(msg.header.stamp)
+            self.last_odom_time = Time.from_msg(msg.header.stamp)
             return
-        delta_time = (msg.header.stamp - self.last_odom_time).nanoseconds / 1e9
-        self.last_odom_time = msg.header.stamp
+        delta_time = (Time.from_msg(msg.header.stamp) - self.last_odom_time).nanoseconds / 1e9
+        self.last_odom_time = Time.from_msg(msg.header.stamp)
 
         # Get the speed and steering angle from the odometry message.
         speed: float = np.linalg.norm([msg.twist.twist.linear.x, msg.twist.twist.linear.y])
@@ -91,6 +99,11 @@ class LapAnalysis(Node):
         delta_yaw = drive_distance * np.tan(steering_angle) / self.wheelbase_length
 
         with self.trajectory_lock:
+            if not self.initialized_traj:
+                # If no trajectory is initialized, stop the vehicle.
+                self.get_logger().warning("No trajectory initialized, stopping.")
+                self.publish_drive_cmd(0.0, 0.0)
+                return
             # translate every point backward by drive_distance along the x‑axis
             # since points are in the vehicle frame
             self.traj_pts[:, 0] -= drive_distance
@@ -151,6 +164,6 @@ class LapAnalysis(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    follower = PurePursuit()
+    follower = LapAnalysis()
     rclpy.spin(follower)
     rclpy.shutdown()
