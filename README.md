@@ -67,8 +67,14 @@ Here are the details of the challenge:
 * You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
 * You should escape Vector's fortress and return to the starting location
 
-Things to note: 
-* Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points.
+***UPDATED*** Things to note: 
+* Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points. However, these points will be similar to the ones already marked. 
+* The bananas will be propped up ***on the ground*** (so homography and YOLO should both work)
+* Successful pickup entails stopping within ***1m** of the banana and saving the image ***with the bounding box***
+* You should stop once you see the red light, but you can go once you stop seeing the red light (you ***do not*** need to detect a green light)
+* You can return to start in one of 2 ways:
+      * Go back via your original path. In this case, the TA crossing and surveillance light are ***bidirectional*** -- you will need to pass them again.
+      * Go around the map (through the long hallway and vending machines). You will not need to pass the TA crossing and surveillance light again, but the back hallway is difficult to localize in, so consider carefully!
 
 <img src="media/Final Challenge Shrinkray Heist Map.png" width="400"/>
 
