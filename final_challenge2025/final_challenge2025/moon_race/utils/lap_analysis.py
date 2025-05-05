@@ -15,6 +15,8 @@ from final_challenge2025.utils import LineTrajectory
 # Numpy
 import numpy as np
 import numpy.typing as npt
+# Matplotlib
+import matplotlib.pyplot as plt
 
 import threading
 
@@ -40,6 +42,8 @@ class LapAnalysis(Node):
         # Subscribers to the planned path and publishers for the drive command.
         self.trajectory: LineTrajectory = LineTrajectory("/followed_trajectory")
         self.deviation = 0.0
+        self.deviation_data: list[float] = []
+        self.time_data: list[float] = []
         self.initialized_traj = False
         # The trajectory points that are RTK'd are stored here.
         self.traj_pts: npt.NDArray[np.float64] = np.zeros((0, 2))
@@ -59,17 +63,6 @@ class LapAnalysis(Node):
         self.deviation_pub = self.create_publisher(
             Float32, "/trajectory/deviation", 1
         )
-    
-    def publish_drive_cmd(self, speed: float, steering_angle: float):
-        """
-        Publishes the drive command to the vehicle.
-        """
-        drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
-        drive_cmd.drive.speed = speed
-        drive_cmd.drive.steering_angle = steering_angle
-        drive_cmd.header.stamp = self.get_clock().now().to_msg()
-        drive_cmd.header.frame_id = "base_link"
-        self.drive_pub.publish(drive_cmd)
 
     def real_time_kinematics(self, msg):
         """
@@ -86,7 +79,7 @@ class LapAnalysis(Node):
 
         # Get the speed and steering angle from the odometry message.
         speed: float = np.linalg.norm([msg.twist.twist.linear.x, msg.twist.twist.linear.y])
-        steering_angle: float = euler_from_quaternion(
+        yaw: float = euler_from_quaternion(
             [msg.pose.pose.orientation.x,
              msg.pose.pose.orientation.y,
              msg.pose.pose.orientation.z,
@@ -95,20 +88,17 @@ class LapAnalysis(Node):
 
         # how far we move in this timestep
         drive_distance = speed * delta_time
-        # yaw change = v/L * tan(delta) * dt
-        delta_yaw = drive_distance * np.tan(steering_angle) / self.wheelbase_length
 
         with self.trajectory_lock:
             if not self.initialized_traj:
                 # If no trajectory is initialized, stop the vehicle.
                 self.get_logger().warning("No trajectory initialized, stopping.")
-                self.publish_drive_cmd(0.0, 0.0)
                 return
             # translate every point backward by drive_distance along the x‑axis
             # since points are in the vehicle frame
             self.traj_pts[:, 0] -= drive_distance
             # rotation matrix for a frame rotation of -delta_yaw:
-            c, s = np.cos(delta_yaw), np.sin(delta_yaw)
+            c, s = np.cos(yaw), np.sin(yaw)
             R = np.array([
                 [c, -s],
                 [s, c]
@@ -123,6 +113,11 @@ class LapAnalysis(Node):
             deviation_msg = Float32()
             deviation_msg.data = self.deviation
             self.deviation_pub.publish(deviation_msg)
+
+            self.time_data.append(
+                msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
+            )
+            self.deviation_data.append(self.deviation)
 
     def trajectory_callback(self, msg: WorldTrajInfo):
         """
@@ -156,6 +151,11 @@ class LapAnalysis(Node):
                 self.initialized_traj = True
                 # Publishes the deviation for visualization.
                 deviation_msg.data = self.deviation
+                # Publishes the deviation for visualization.
+                self.time_data.append(
+                    msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
+                )
+                self.deviation_data.append(self.deviation)
         
         self.deviation_pub.publish(deviation_msg)
         # Publish the trajectory for visualization.
@@ -164,6 +164,19 @@ class LapAnalysis(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    follower = LapAnalysis()
-    rclpy.spin(follower)
-    rclpy.shutdown()
+    node = LapAnalysis()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # --- plot deviation over time ---
+        if node.time_data and node.deviation_data:
+            plt.figure()
+            plt.plot(node.time_data, node.deviation_data)
+            plt.xlabel("Time since start (s)")
+            plt.ylabel("Lateral deviation (m)")
+            plt.title("Trajectory Deviation Over Time")
+            plt.grid(True)
+            plt.tight_layout()
+            plt.savefig("deviation_over_time.png")
