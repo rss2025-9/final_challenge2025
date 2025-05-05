@@ -15,7 +15,6 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool
 
 from . import HeistState
-from . import HEISTSTATE
 
 class StateMachineNode(Node):
     # constructor 
@@ -23,7 +22,7 @@ class StateMachineNode(Node):
         super().__init__('state_machine')
         self.get_logger().info('Heist State Machine Initialized')
 
-        HEISTSTATE = HeistState.IDLE
+        self.heist_state = HeistState.IDLE
 
         self.initial_pose = None
         self.goals = []
@@ -62,7 +61,7 @@ class StateMachineNode(Node):
     def trajectory_cb(self, msg: Bool):
         if msg.data:
             self.finished_traj = True
-            HEISTSTATE = HeistState.SCOUT
+            self.heist_state = HeistState.SCOUT
         else:
             self.finished_traj = False
     
@@ -82,11 +81,11 @@ class StateMachineNode(Node):
 
     def detection_cb(self, msg: DetectionStates):
         if msg.traffic_light_state == 'RED':
-            HEISTSTATE = HeistState.WAIT_TRAFFIC
-        elif msg.traffic_light_state == 'GREEN' and HEISTSTATE == HeistState.WAIT_TRAFFIC:
-            HEISTSTATE = HeistState.FOLLOW_TRAJ
-        if msg.banana_state == 'DETECTED' and HEISTSTATE == HeistState.SCOUT:
-            HEISTSTATE = HeistState.PARK
+            self.heist_state = HeistState.WAIT_TRAFFIC
+        elif msg.traffic_light_state == 'GREEN' and self.heist_state == HeistState.WAIT_TRAFFIC:
+            self.heist_state = HeistState.FOLLOW_TRAJ
+        if msg.banana_state == 'DETECTED' and self.heist_state == HeistState.SCOUT:
+            self.heist_state = HeistState.PARK
         # if msg.person_state == 'DETECTED':
         #     self.get_logger().info('Human detected - stopping temporarily')
         #     # Could pause controller or use safety state
@@ -98,12 +97,12 @@ class StateMachineNode(Node):
         self.drive_pub.publish(sweep_msg)
 
     def on_timer(self):
-        match HEISTSTATE:
+        match self.heist_state:
             case HeistState.IDLE:
                 # self.get_logger().info('Waiting for initial pose and goals')
                 if self.initial_pose is not None and len(self.goals) == 2:
                     self.get_logger().info('Initial pose and goals received')
-                    HEISTSTATE = HeistState.PLAN_TRAJ
+                    self.heist_state = HeistState.PLAN_TRAJ
                     self.goal_idx = 0
 
             case HeistState.PLAN_TRAJ:
@@ -129,20 +128,20 @@ class StateMachineNode(Node):
                     goal_pose.pose.position.x = self.goals[self.goal_idx][0]
                     goal_pose.pose.position.y = self.goals[self.goal_idx][1]
                     self.goal_publish.publish(goal_pose)
-                HEISTSTATE = HeistState.FOLLOW_TRAJ
+                self.heist_state = HeistState.FOLLOW_TRAJ
 
             case HeistState.FOLLOW_TRAJ:
                 # if self.curr_pos.pose.pose.position.x == self.goals[self.goal_idx][0] and self.curr_pos.pose.pose.position.y == self.goals[self.goal_idx][1]:
                 #     self.get_logger().info(f'Reached goal #{self.goal_idx}')
                 #     self.pickup_time = None
-                #     HEISTSTATE = HeistState.SCOUT
+                #     self.heist_state = HeistState.SCOUT
 
                 # dummy fix 
                 if self.finished_traj:
                     self.get_logger().info(f'Reached goal #{self.goal_idx}')
                     self.pickup_time = None
                     self.finished_traj = False
-                    HEISTSTATE = HeistState.SCOUT
+                    self.heist_state = HeistState.SCOUT
 
             case HeistState.WAIT_TRAFFIC:
                 # publish stop cmd
@@ -153,7 +152,7 @@ class StateMachineNode(Node):
                 # self.get_logger().info('No green light, waiting')
 
             case HeistState.SCOUT:
-                HEISTSTATE = HeistState.PARK
+                self.heist_state = HeistState.PARK
                 if self.sweep_count < self.max_sweep_attempts:
                     if self.sweep_start_time is None:
                         self.sweep_start_time = time.time()
@@ -167,7 +166,7 @@ class StateMachineNode(Node):
                 else:
                     self.get_logger().warn('Banana not found after sweeps, continuing')
                     self.sweep_count = 0
-                    HEISTSTATE = HeistState.PLAN_TRAJ
+                    self.heist_state = HeistState.PLAN_TRAJ
                     self.goal_idx += 1
 
             case HeistState.PARK:
@@ -181,9 +180,9 @@ class StateMachineNode(Node):
                     self.sweep_count = 0
                     self.parking_started = False
                     if self.goal_idx >= len(self.goals):
-                        HEISTSTATE = HeistState.ESCAPE
+                        self.heist_state = HeistState.ESCAPE
                     else:
-                        HEISTSTATE = HeistState.PLAN_TRAJ
+                        self.heist_state = HeistState.PLAN_TRAJ
                 else:
                     # publish stop cmd
                     msg = AckermannDriveStamped()
@@ -205,16 +204,18 @@ class StateMachineNode(Node):
                 goal_pose.pose = self.initial_pose.pose.pose
                 self.goal_publish.publish(goal_pose)
                 if self.curr_pos.pose.pose.position.x == self.initial_pose.pose.pose.position.x and self.curr_pos.pose.pose.position.y == self.initial_pose.pose.pose.position.y:
-                    HEISTSTATE = HeistState.COMPLETE
+                    self.heist_state = HeistState.COMPLETE
 
             case HeistState.COMPLETE:
                 self.get_logger().info('Heist COMPLETE')
 
 def main(args=None):
+    global state_machine
     rclpy.init(args=args)
-    node = StateMachineNode()
-    rclpy.spin(node)
+    state_machine = StateMachineNode()
+    rclpy.spin(state_machine)
     rclpy.shutdown()
 
+state_machine = None
 if __name__ == '__main__':
     main()

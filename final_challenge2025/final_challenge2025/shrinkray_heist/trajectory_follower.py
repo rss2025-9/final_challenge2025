@@ -13,8 +13,8 @@ from std_msgs.msg import Bool
 
 from ..utils import LineTrajectory
 
-from . import HEISTSTATE
 from . import HeistState
+from .state_machine import state_machine
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
@@ -58,6 +58,8 @@ class PurePursuit(Node):
         """
         Publishes the drive command to the vehicle.
         """
+        if state_machine is None or state_machine.heist_state != HeistState.FOLLOW_TRAJ:
+            return
         drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
         drive_cmd.drive.speed = speed
         drive_cmd.drive.steering_angle = steering_angle
