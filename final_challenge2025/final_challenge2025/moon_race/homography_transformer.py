@@ -89,7 +89,7 @@ METERS_PER_INCH = 0.0254
 class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
-        self.extension = 8
+        self.extension = 12
 
         self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
