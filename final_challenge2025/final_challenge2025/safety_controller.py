@@ -114,7 +114,7 @@ class SafetyController(Node):
         brake_msg.drive.speed = self.step_brake_speed
         brake_msg.drive.steering_angle = 0.0
         self.drive_pub.publish(brake_msg)
-        self.get_logger().warn(f"SLOWING DOWN - reducing to {self.step_brake_speed} m/s.")
+        # self.get_logger().warn(f"SLOWING DOWN - reducing to {self.step_brake_speed} m/s.")
 
 
 def main():

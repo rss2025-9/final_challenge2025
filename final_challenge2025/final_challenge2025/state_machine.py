@@ -37,7 +37,7 @@ class StateMachineNode(Node):
         self.get_logger().info('Heist State Machine Initialized')
 
         self.state = HeistState.IDLE
-        self.intial_pose = None
+        self.initial_pose = None
         self.goals = []
         self.goal_idx = None
         self.pickup_time = None
@@ -47,6 +47,9 @@ class StateMachineNode(Node):
         self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.pose_cb, 1) # initial pose
         self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1) # custom YOLO detection messages
         self.create_subscription(Odometry, '/pf/pose/odom', self.odom_cb, 1) # odometry data
+
+        # dummy fix for the trajectory follower
+        self.create_subscription(bool, '/end_trajectory', self.trajectory_cb, 1)
 
         self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 10)
@@ -65,16 +68,23 @@ class StateMachineNode(Node):
 
         self.pose_set = False
         self.curr_pos = None
-        self.found_banana = False
+        self.finished_traj = False
+    
+    # dummy fix for the trajectory follower
+    def trajectory_cb(self, msg: bool):
+        if msg.data:
+            self.finished_traj = True
+        else:
+            self.finished_traj = False
     
     def odom_cb(self, msg: Odometry):
         self.curr_pos = msg
 
-    def pose_cb(self, msg: PoseStamped):
+    def pose_cb(self, msg: PoseWithCovarianceStamped):
         if self.pose_set:
             return
-        self.intial_pose = msg.pose
-        self.get_logger().info(f'Initial pose: {self.intial_pose.position.x}, {self.intial_pose.position.y}')
+        self.initial_pose = msg
+        self.get_logger().info(f'Initial pose: {self.initial_pose.pose.pose.position.x}, {self.initial_pose.pose.pose.position.y}')
         self.pose_set = True
 
     def goals_cb(self, msg: PoseArray):
@@ -82,14 +92,12 @@ class StateMachineNode(Node):
         self.get_logger().info(f'Received goals: {self.goals}')
 
     def detection_cb(self, msg: DetectionStates):
-        if msg.traffic_light_state != 'GREEN':
+        if msg.traffic_light_state == 'RED':
             self.state = HeistState.WAIT_TRAFFIC
         elif msg.traffic_light_state == 'GREEN' and self.state == HeistState.WAIT_TRAFFIC:
             self.state = HeistState.FOLLOW_TRAJ
-        if msg.banana_state == 'DETECTED':
-            if self.found_banana == False:
+        if msg.banana_state == 'DETECTED' and self.state == HeistState.SCOUT:
                 self.state = HeistState.PARK
-                self.found_banana = True
         # if msg.person_state == 'DETECTED':
         #     self.get_logger().info('Human detected - stopping temporarily')
         #     # Could pause controller or use safety state
@@ -103,24 +111,40 @@ class StateMachineNode(Node):
     def on_timer(self):
         match self.state:
             case HeistState.IDLE:
-                self.get_logger().info('Waiting for initial pose and goals')
-                if self.intial_pose is not None and len(self.goals) >= 2:
+                # self.get_logger().info('Waiting for initial pose and goals')
+                if self.initial_pose is not None and len(self.goals) == 2:
+                    self.get_logger().info('Initial pose and goals received')
                     self.state = HeistState.PLAN_TRAJ
                     self.goal_idx = 0
 
             case HeistState.PLAN_TRAJ:
-                self.found_banana = False
                 self.get_logger().info(f'Planning to goal #{self.goal_idx}')
                 if self.goal_idx == 0: 
-                    self.start_publish.publish(self.intial_pose)
-                    self.goal_publish.publish(self.goals[0])
+                    self.start_publish.publish(self.initial_pose)
+                    goal_pose = PoseStamped()
+                    goal_pose.header.frame_id = 'map'
+                    goal_pose.header.stamp = self.get_clock().now().to_msg()
+                    goal_pose.pose.position.x = self.goals[0][0]
+                    goal_pose.pose.position.y = self.goals[0][1]
+                    self.goal_publish.publish(goal_pose)
                 else:
                     self.start_publish.publish(self.goals[self.goal_idx - 1])
-                    self.goal_publish.publish(self.goals[self.goal_idx])
+                    goal_pose = PoseStamped()
+                    goal_pose.header.frame_id = 'map'
+                    goal_pose.header.stamp = self.get_clock().now().to_msg()
+                    goal_pose.pose.position.x = self.goals[self.goal_idx][0]
+                    goal_pose.pose.position.y = self.goals[self.goal_idx][1]
+                    self.goal_publish.publish(goal_pose)
                 self.state = HeistState.FOLLOW_TRAJ
 
             case HeistState.FOLLOW_TRAJ:
-                if self.curr_pos.position.x == self.goals[self.goal_idx][0] and self.curr_pos.position.y == self.goals[self.goal_idx][1]:
+                # if self.curr_pos.pose.pose.position.x == self.goals[self.goal_idx][0] and self.curr_pos.pose.pose.position.y == self.goals[self.goal_idx][1]:
+                #     self.get_logger().info(f'Reached goal #{self.goal_idx}')
+                #     self.pickup_time = None
+                #     self.state = HeistState.SCOUT
+
+                # dummy fix 
+                if self.finished_traj:
                     self.get_logger().info(f'Reached goal #{self.goal_idx}')
                     self.pickup_time = None
                     self.state = HeistState.SCOUT
@@ -131,7 +155,7 @@ class StateMachineNode(Node):
                 msg.drive.speed = 0.0
                 msg.drive.steering_angle = 0.0
                 self.drive_pub.publish(msg)
-                self.get_logger().info('No green light, waiting')
+                # self.get_logger().info('No green light, waiting')
 
             case HeistState.SCOUT:
                 if self.sweep_count < self.max_sweep_attempts:
@@ -174,8 +198,12 @@ class StateMachineNode(Node):
             case HeistState.ESCAPE:
                 self.get_logger().info('Escaping')
                 self.start_publish.publish(self.goals[-1])
-                self.goal_publish.publish(self.intial_pose)
-                if self.curr_pos.position.x == self.intial_pose.position.x and self.curr_pos.position.y == self.intial_pose.position.y:
+                goal_pose = PoseStamped()
+                goal_pose.header.frame_id = 'map'
+                goal_pose.header.stamp = self.get_clock().now().to_msg()
+                goal_pose.pose = self.initial_pose.pose.pose
+                self.goal_publish.publish(goal_pose)
+                if self.curr_pos.pose.pose.position.x == self.initial_pose.pose.pose.position.x and self.curr_pos.pose.pose.position.y == self.initial_pose.pose.pose.position.y:
                     self.state = HeistState.COMPLETE
 
             case HeistState.COMPLETE:

@@ -13,6 +13,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (f'share/{package_name}/launch', glob.glob(os.path.join('launch', '*launch.*'))),
         (os.path.join('share', package_name, 'config', 'race'), glob.glob('config/race/*.yaml')),
+        (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml'))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -32,6 +33,7 @@ setup(
             'trajectory_follower = final_challenge2025.trajectory_follower:main',
             'trajectory_builder = final_challenge2025.trajectory_builder:main',
             'trajectory_loader = final_challenge2025.trajectory_loader:main',
+            'basement_point_publisher = final_challenge2025.shrinkray_heist.basement_point_publisher:main',
             # Race files.
             'race_control = final_challenge2025.moon_race.race_control:main',
             'lane_detector = final_challenge2025.moon_race.lane_detector:main',

@@ -1,0 +1,45 @@
+particle_filter:
+  ros__parameters:
+    num_particles: 200
+
+    # The number of lidar beams emitted from
+    # each particle. This doesn't need to be
+    # equal to the actual number (>1000)
+    # so long as you downsample properly
+    num_beams_per_particle: 100
+
+    # The field of view centered around theta=0
+    scan_field_of_view: 4.71 # radians
+    noise: 0.05
+
+    # Discretize the theta space for faster ray tracing
+    scan_theta_discretization: 500.0
+
+    # The names of topics to listen and publish to
+    map_topic: "/map"
+    scan_topic: "/scan"
+    odom_topic: "/vesc/odom"
+
+    # The frame you should publish your transform to
+    particle_filter_frame: "/base_link"
+
+    # Deterministic flag; set to true to remove all added noise
+    deterministic: false
+
+    lidar_scale_to_map_scale: 1.0
+
+    optimize_publishes: true
+
+trajectory_planner:
+  ros__parameters:
+    odom_topic: "/pf/pose/odom"
+    map_topic: "/map"
+    scan_topic: "/scan"
+    initial_pose_topic: "/initialpose"
+    buffer_meters: 1.75
+trajectory_follower:
+  ros__parameters:
+    odom_topic: "/pf/pose/odom"
+    drive_topic: "/vesc/high_level/input/nav_0"
+    lookahead_distance: 4.0 
+    speed: 1.0
