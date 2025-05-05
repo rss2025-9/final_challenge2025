@@ -38,6 +38,8 @@ setup(
             'race_control = final_challenge2025.moon_race.race_control:main',
             'lane_detector = final_challenge2025.moon_race.lane_detector:main',
             'homography_transformer = final_challenge2025.moon_race.homography_transformer:main',
+            # Analysis files.
+            'lap_analysis = final_challenge2025.moon_race.utils.lap_analysis:main',
         ],
     },
 )
