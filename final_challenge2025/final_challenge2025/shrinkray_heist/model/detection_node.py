@@ -61,19 +61,21 @@ class DetectorNode(Node):
                 continue
 
             if label == 'traffic light':
+                self.get_logger().info("traffic light detected ahead")
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
                 # red
-                m1 = cv2.inRange(hsv, (0, 50, 50), (10, 255, 255))
-                m2 = cv2.inRange(hsv, (160, 50, 50), (180, 255, 255))
-                red_count = cv2.countNonZero(m1) + cv2.countNonZero(m2)
+                mr = cv2.inRange(hsv, (170, 0, 0), (255, 20, 20))
+                red_count = cv2.countNonZero(mr)
                 # green
-                mg = cv2.inRange(hsv, (40, 50, 50), (90, 255, 255))
+                mg = cv2.inRange(hsv, (0, 120, 80), (90, 180, 100))
                 green_count = cv2.countNonZero(mg)
-                if red_count > 0.1 * area:
+                if red_count > 0.01 * area:
                     msg.traffic_light_state = 'RED'
-                elif green_count > 0.1 * area:
+                    self.get_logger().info('TRAFFIC LIGHT! RED')
+                elif green_count > 0.01 * area:
                     msg.traffic_light_state = 'GREEN'
+                    self.get_logger().info('GREEN TRAFFIC LIGHT!')
                 else:
                     msg.traffic_light_state = 'NONE'
 
@@ -85,7 +87,7 @@ class DetectorNode(Node):
                 # if yellow_count > 0.1 * area:
                     # self.banana_counter += 1
                 self.banana_counter += 1
-                if self.banana_counter >= 5: 
+                if self.banana_counter >= 1: 
                     self.banana_counter = 0
                     msg.banana_state = 'DETECTED'
                     # Save the image with the banana    
