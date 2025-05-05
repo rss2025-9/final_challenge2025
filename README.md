@@ -67,7 +67,7 @@ Here are the details of the challenge:
 * You should avoid running into guards, hitting obstacles, or otherwise triggering the security system
 * You should escape Vector's fortress and return to the starting location
 
-***UPDATED*** Things to note: 
+***!!!UPDATED!!!*** Things to note: 
 * Any 2 points on the map can be chosen, so you should test your ability to navigate between any two points. However, these points will be similar to the ones already marked. 
 * The bananas will be propped up ***on the ground*** (so homography and YOLO should both work)
 * Successful pickup entails stopping within ***1m** of the banana and saving the image ***with the bounding box***
