@@ -11,8 +11,10 @@ import numpy as np
 import numpy.typing as npt
 from std_msgs.msg import Bool
 
-from .utils import LineTrajectory
+from ..utils import LineTrajectory
 
+from . import HEISTSTATE
+from . import HeistState
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.

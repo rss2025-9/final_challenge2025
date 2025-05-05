@@ -26,11 +26,11 @@ setup(
         'console_scripts': [
             # State machine files.
             'particle_filter = final_challenge2025.particle_filter:main',
-            'state_machine = final_challenge2025.state_machine:main',
+            'state_machine = final_challenge2025.shrinkray_heist.state_machine:main',
             'detector = final_challenge2025.shrinkray_heist.model.detection_node:main',
             'safety_controller = final_challenge2025.safety_controller:main',
             'trajectory_planner = final_challenge2025.trajectory_planner:main',
-            'trajectory_follower = final_challenge2025.trajectory_follower:main',
+            'trajectory_follower = final_challenge2025.shrinkray_heist.trajectory_follower:main',
             'trajectory_builder = final_challenge2025.trajectory_builder:main',
             'trajectory_loader = final_challenge2025.trajectory_loader:main',
             'basement_point_publisher = final_challenge2025.shrinkray_heist.basement_point_publisher:main',
