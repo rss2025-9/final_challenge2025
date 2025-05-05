@@ -48,6 +48,9 @@ class StateMachineNode(Node):
         self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1) # custom YOLO detection messages
         self.create_subscription(Odometry, '/pf/pose/odom', self.odom_cb, 1) # odometry data
 
+        # dummy fix for the trajectory follower
+        self.create_subscription(bool, '/end_trajectory', self.trajectory_cb, 1)
+
         self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 10)
 
@@ -65,7 +68,14 @@ class StateMachineNode(Node):
 
         self.pose_set = False
         self.curr_pos = None
-        self.found_banana = False
+        self.finished_traj = False
+    
+    # dummy fix for the trajectory follower
+    def trajectory_cb(self, msg: bool):
+        if msg.data:
+            self.finished_traj = True
+        else:
+            self.finished_traj = False
     
     def odom_cb(self, msg: Odometry):
         self.curr_pos = msg
@@ -86,10 +96,8 @@ class StateMachineNode(Node):
             self.state = HeistState.WAIT_TRAFFIC
         elif msg.traffic_light_state == 'GREEN' and self.state == HeistState.WAIT_TRAFFIC:
             self.state = HeistState.FOLLOW_TRAJ
-        if msg.banana_state == 'DETECTED':
-            if self.found_banana == False:
+        if msg.banana_state == 'DETECTED' and self.state == HeistState.SCOUT:
                 self.state = HeistState.PARK
-                self.found_banana = True
         # if msg.person_state == 'DETECTED':
         #     self.get_logger().info('Human detected - stopping temporarily')
         #     # Could pause controller or use safety state
@@ -110,7 +118,6 @@ class StateMachineNode(Node):
                     self.goal_idx = 0
 
             case HeistState.PLAN_TRAJ:
-                self.found_banana = False
                 self.get_logger().info(f'Planning to goal #{self.goal_idx}')
                 if self.goal_idx == 0: 
                     self.start_publish.publish(self.initial_pose)
@@ -131,7 +138,13 @@ class StateMachineNode(Node):
                 self.state = HeistState.FOLLOW_TRAJ
 
             case HeistState.FOLLOW_TRAJ:
-                if self.curr_pos.pose.pose.position.x == self.goals[self.goal_idx][0] and self.curr_pos.pose.pose.position.y == self.goals[self.goal_idx][1]:
+                # if self.curr_pos.pose.pose.position.x == self.goals[self.goal_idx][0] and self.curr_pos.pose.pose.position.y == self.goals[self.goal_idx][1]:
+                #     self.get_logger().info(f'Reached goal #{self.goal_idx}')
+                #     self.pickup_time = None
+                #     self.state = HeistState.SCOUT
+
+                # dummy fix 
+                if self.finished_traj:
                     self.get_logger().info(f'Reached goal #{self.goal_idx}')
                     self.pickup_time = None
                     self.state = HeistState.SCOUT

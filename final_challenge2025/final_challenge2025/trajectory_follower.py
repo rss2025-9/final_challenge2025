@@ -48,6 +48,8 @@ class PurePursuit(Node):
             self.pose_callback, 1
         )
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
+
+        self.end_pub = self.create_publisher(bool, "/end_trajectory", 1)
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """
@@ -137,6 +139,7 @@ class PurePursuit(Node):
             if closest_idx == len(relative_positions) - 1:
                 self.get_logger().warning("Last point in trajectory reached, stopping.")
                 self.publish_drive_cmd(0.0, 0.0)
+                self.end_pub.publish(True)
                 return
             # Otherwise, set the goal point to the closest point.
             goal_point = self.get_trajectory(
