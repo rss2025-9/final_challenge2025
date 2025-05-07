@@ -39,8 +39,8 @@ class StateMachineNode(Node):
         # dummy fix for the trajectory follower
         self.create_subscription(Bool, '/end_trajectory', self.trajectory_cb, 1)
 
-        self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
-        self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 10)
+        self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 1)
+        self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 1)
         self.state_publish = self.create_publisher(String, "/state", 1)
         self.drive_publish = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
 
@@ -128,28 +128,49 @@ class StateMachineNode(Node):
 
             case HeistState.PLAN_TRAJ:
                 self.get_logger().info(f'Planning to goal #{self.goal_idx}')
-                if self.goal_idx == 0: 
-                    self.start_publish.publish(self.initial_pose)
-                    goal_pose = PoseStamped()
-                    goal_pose.header.frame_id = 'map'
-                    goal_pose.header.stamp = self.get_clock().now().to_msg()
-                    goal_pose.pose.position.x = self.goals[0][0]
-                    goal_pose.pose.position.y = self.goals[0][1]
-                    self.goal_publish.publish(goal_pose)
-                else:
+
+                # New planning for republishing current pose as start point 
+                if self.curr_pos is not None: 
                     start_pose = PoseWithCovarianceStamped()
                     start_pose.header.frame_id ='map'
                     start_pose.header.stamp = self.get_clock().now().to_msg()
-                    start_pose.pose.pose.position.x = self.goals[self.goal_idx - 1][0]
-                    start_pose.pose.pose.position.y = self.goals[self.goal_idx - 1][1]
+                    start_pose.pose.pose = self.curr_pos.pose.pose
                     self.start_publish.publish(start_pose)
-                    goal_pose = PoseStamped()
-                    goal_pose.header.frame_id = 'map'
-                    goal_pose.header.stamp = self.get_clock().now().to_msg()
-                    goal_pose.pose.position.x = self.goals[self.goal_idx][0]
-                    goal_pose.pose.position.y = self.goals[self.goal_idx][1]
-                    self.goal_publish.publish(goal_pose)
+                    self.get_logger().info(f'Republished start as current pose: {self.curr_pos.pose.pose.position.x}, {self.curr_pos.pose.pose.position.y}')
+
+                goal_pose = PoseStamped() 
+                goal_pose.header.frame_id = 'map'  
+                goal_pose.header.stamp = self.get_clock().now().to_msg()
+                goal_pose.pose.position.x = self.goals[self.goal_idx][0]
+                goal_pose.pose.position.y = self.goals[self.goal_idx][1]
+                self.goal_publish.publish(goal_pose)
+                self.get_logger().info(f'Published goal: {goal_pose.pose.position.x}, {goal_pose.pose.position.y}')
+                
                 self.heist_state = HeistState.FOLLOW_TRAJ
+                
+                # Old planning code for start and goal pose publishing
+                # if self.goal_idx == 0: 
+                #     self.start_publish.publish(self.initial_pose)
+                #     goal_pose = PoseStamped()
+                #     goal_pose.header.frame_id = 'map'
+                #     goal_pose.header.stamp = self.get_clock().now().to_msg()
+                #     goal_pose.pose.position.x = self.goals[0][0]
+                #     goal_pose.pose.position.y = self.goals[0][1]
+                #     self.goal_publish.publish(goal_pose)
+                # else:
+                #     start_pose = PoseWithCovarianceStamped()
+                #     start_pose.header.frame_id ='map'
+                #     start_pose.header.stamp = self.get_clock().now().to_msg()
+                #     start_pose.pose.pose.position.x = self.goals[self.goal_idx - 1][0]
+                #     start_pose.pose.pose.position.y = self.goals[self.goal_idx - 1][1]
+                #     self.start_publish.publish(start_pose)
+                #     goal_pose = PoseStamped()
+                #     goal_pose.header.frame_id = 'map'
+                #     goal_pose.header.stamp = self.get_clock().now().to_msg()
+                #     goal_pose.pose.position.x = self.goals[self.goal_idx][0]
+                #     goal_pose.pose.position.y = self.goals[self.goal_idx][1]
+                #     self.goal_publish.publish(goal_pose)
+                # self.heist_state = HeistState.FOLLOW_TRAJ
 
             case HeistState.FOLLOW_TRAJ:
                 # if self.curr_pos.pose.pose.position.x == self.goals[self.goal_idx][0] and self.curr_pos.pose.pose.position.y == self.goals[self.goal_idx][1]:
