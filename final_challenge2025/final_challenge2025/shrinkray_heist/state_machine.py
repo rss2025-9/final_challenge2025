@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from enum import Enum, auto
 import time
+import threading
 
 # from scipy.ndimage import binary_dilation
 from scipy.ndimage import distance_transform_edt
@@ -51,8 +51,10 @@ class StateMachineNode(Node):
         self.max_sweep_attempts = 3
         self.sweep_start_time = None
         self.sweep_duration = 2.0
+        self.sweep_lock = threading.Lock()
 
         self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 1)
+        self.drive_lock = threading.Lock()
 
         self.pose_set = False
         self.curr_pos = None
@@ -92,10 +94,16 @@ class StateMachineNode(Node):
         #     # Could pause controller or use safety state
 
     def publish_sweep_motion(self, direction: int = 1):
-        sweep_msg = AckermannDriveStamped()
-        sweep_msg.drive.speed = 0.2
-        sweep_msg.drive.steering_angle = direction * 0.34
-        self.drive_pub.publish(sweep_msg)
+        self.publish_drive_cmd(0.2, direction * 0.34)
+    
+    def publish_drive_cmd(self, speed: float, steering_angle: float):
+        with self.drive_lock:
+            drive_msg = AckermannDriveStamped()
+            drive_msg.header.stamp = self.get_clock().now().to_msg()
+            drive_msg.header.frame_id = 'base_link'
+            drive_msg.drive.speed = speed
+            drive_msg.drive.steering_angle = steering_angle
+            self.drive_pub.publish(drive_msg)
 
     def on_timer(self):
 
@@ -154,27 +162,25 @@ class StateMachineNode(Node):
 
             case HeistState.WAIT_TRAFFIC:
                 # publish stop cmd
-                msg = AckermannDriveStamped()
-                msg.drive.speed = 0.0
-                msg.drive.steering_angle = 0.0
-                self.drive_pub.publish(msg)
-                # self.get_logger().info('No green light, waiting')
+                self.get_logger().info('No green light, waiting')
+                self.publish_drive_cmd(0.0, 0.0)
 
             case HeistState.SCOUT:
-                if self.sweep_count < self.max_sweep_attempts:
-                    if self.sweep_start_time is None:
-                        self.sweep_start_time = time.time()
-                        direction = 1 if self.sweep_count % 2 == 0 else -1
-                        self.publish_sweep_motion(direction)
-                        self.get_logger().info(f'Sweep #{self.sweep_count + 1} started')
-                    elif time.time() - self.sweep_start_time > self.sweep_duration:
-                        self.get_logger().info(f'Sweep #{self.sweep_count + 1} complete')
-                        self.sweep_count += 1
-                        self.sweep_start_time = None
-                else:
-                    self.get_logger().warn('Banana not found after sweeps, continuing')
-                    self.sweep_count = 0
-                    self.state = HeistState.PLAN_TRAJ
+                with self.sweep_lock:
+                    if self.sweep_count < self.max_sweep_attempts:
+                        if self.sweep_start_time is None:
+                            self.sweep_start_time = time.time()
+                            direction = 1 if self.sweep_count % 2 == 0 else -1
+                            self.publish_sweep_motion(direction)
+                            self.get_logger().info(f'Sweep #{self.sweep_count + 1} started')
+                        elif time.time() - self.sweep_start_time > self.sweep_duration:
+                            self.get_logger().info(f'Sweep #{self.sweep_count + 1} complete')
+                            self.sweep_count += 1
+                            self.sweep_start_time = None
+                    else:
+                        self.get_logger().warn('Banana not found after sweeps, continuing')
+                        self.sweep_count = 0
+                        self.state = HeistState.PLAN_TRAJ
 
             case HeistState.PARK:
                 if self.parking_done_time is None:
@@ -192,10 +198,9 @@ class StateMachineNode(Node):
                         self.heist_state = HeistState.PLAN_TRAJ
                 else:
                     # publish stop cmd
-                    msg = AckermannDriveStamped()
-                    msg.drive.speed = 0.0
-                    msg.drive.steering_angle = 0.0
-                    self.drive_pub.publish(msg)
+                    self.get_logger().info('Parking')
+                    with self.drive_lock:
+                        self.publish_drive_cmd(0.0, 0.0)
 
             case HeistState.ESCAPE:
                 self.get_logger().info('Escaping')
