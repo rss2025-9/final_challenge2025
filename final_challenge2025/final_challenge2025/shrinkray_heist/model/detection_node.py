@@ -67,18 +67,25 @@ class DetectorNode(Node):
                 area = region.shape[0] * region.shape[1]
                 # red
                 stop_mask = cv2.inRange(hsv, (120, 220, 160), (179, 255, 255))  # hue, saturation, value
-                debug_msg = self.bridge.cv2_to_imgmsg(stop_mask, "mono8")
-                self.debug_pub.publish(debug_msg)
                 red_count = cv2.countNonZero(stop_mask)
-                # green
+                # yellow
                 my = cv2.inRange(hsv, (60, 220, 160), (119, 255, 255))
                 yellow_count = cv2.countNonZero(my)
+                # green
+                mg = cv2.inRange(hsv, (0, 220, 160), (59, 255, 255))
+                green_count = cv2.countNonZero(mg)
+
+                debug_msg = self.bridge.cv2_to_imgmsg(stop_mask+my+mg, "mono8")
+                self.debug_pub.publish(debug_msg)
                 if red_count > 0.035 * area:
                     msg.traffic_light_state = 'RED'
                     self.get_logger().info('RED TRAFFIC LIGHT!')
-                elif yellow_count > 0.01 * area:
+                elif yellow_count > 0.035 * area:
                     msg.traffic_light_state = 'YELLOW'
                     self.get_logger().info('YELLOW TRAFFIC LIGHT!')
+                elif green_count > 0.035 * area:
+                    msg.traffic_light_state = 'GREEN'
+                    self.get_logger().info('GREEN TRAFFIC LIGHT!')
                 else:
                     msg.traffic_light_state = 'NONE'
 
