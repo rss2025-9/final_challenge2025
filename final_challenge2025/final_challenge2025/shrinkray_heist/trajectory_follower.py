@@ -12,6 +12,7 @@ import numpy as np
 import numpy.typing as npt
 from std_msgs.msg import Bool, String
 from enum import Enum, auto
+import threading
 
 from ..utils import LineTrajectory
 
@@ -65,25 +66,27 @@ class PurePursuit(Node):
         self.end_pub = self.create_publisher(Bool, "/end_trajectory", 1)
 
         self.state_sub = self.create_subscription(String, "/state", self.state_cb, 1)
+        self.state_lock = threading.Lock()
 
         self.heist_state = None
 
     def state_cb(self, msg: String):
-        self.heist_state = msg.data
+        with self.state_lock:
+            self.heist_state = msg.data
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """
         Publishes the drive command to the vehicle.
         """
-
-        if self.heist_state is None or self.heist_state != "HeistState.FOLLOW_TRAJ": 
-            return
-        drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
-        drive_cmd.drive.speed = speed
-        drive_cmd.drive.steering_angle = steering_angle
-        drive_cmd.header.stamp = self.get_clock().now().to_msg()
-        drive_cmd.header.frame_id = "base_link"
-        self.drive_pub.publish(drive_cmd)
+        with self.state_lock:
+            if self.heist_state is None or self.heist_state != "HeistState.FOLLOW_TRAJ": 
+                return
+            drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
+            drive_cmd.drive.speed = speed
+            drive_cmd.drive.steering_angle = steering_angle
+            drive_cmd.header.stamp = self.get_clock().now().to_msg()
+            drive_cmd.header.frame_id = "base_link"
+            self.drive_pub.publish(drive_cmd)
 
     def get_trajectory(
         self, closest_idx: int, 

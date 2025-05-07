@@ -4,8 +4,6 @@ import time
 import threading
 
 # from scipy.ndimage import binary_dilation
-from scipy.ndimage import distance_transform_edt
-from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseArray, PoseStamped
 from cv_bridge import CvBridge
 from final_interfaces.msg import DetectionStates
@@ -21,6 +19,9 @@ class StateMachineNode(Node):
     def __init__(self):
         super().__init__('state_machine')
         self.get_logger().info('Heist State Machine Initialized')
+        
+        self.declare_parameter('drive_topic', "default")
+        self.drive_topic: str = self.get_parameter('drive_topic').get_parameter_value().string_value
 
         self.heist_state = HeistState.IDLE
 
@@ -40,7 +41,8 @@ class StateMachineNode(Node):
 
         self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 10)
-        self.state_publish = self.create_publisher(String, "/state", 10)
+        self.state_publish = self.create_publisher(String, "/state", 1)
+        self.drive_publish = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
 
         self.create_timer(0.1, self.on_timer)
 
@@ -53,8 +55,8 @@ class StateMachineNode(Node):
         self.sweep_duration = 2.0
         self.sweep_lock = threading.Lock()
 
-        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 1)
         self.drive_lock = threading.Lock()
+        self.traffic_timer = time.time()
 
         self.pose_set = False
         self.curr_pos = None
@@ -85,10 +87,16 @@ class StateMachineNode(Node):
     def detection_cb(self, msg: DetectionStates):
         if msg.traffic_light_state == 'RED':
             self.heist_state = HeistState.WAIT_TRAFFIC
-        elif msg.traffic_light_state != 'RED' and self.heist_state == HeistState.WAIT_TRAFFIC:
+            self.traffic_timer = time.time()
+        elif msg.traffic_light_state != 'RED' and self.heist_state == HeistState.WAIT_TRAFFIC and (time.time() - self.traffic_timer) > 0.5:
             self.heist_state = HeistState.FOLLOW_TRAJ
-        if msg.banana_state == 'DETECTED' and self.heist_state == HeistState.SCOUT:
+        # Should prioritize stopping over parking over banana.
+        elif msg.banana_state == 'DETECTED' and self.heist_state == HeistState.SCOUT:
             self.heist_state = HeistState.PARK
+        curr_state = String()
+        curr_state.data = str(self.heist_state)
+        self.state_publish.publish(curr_state)
+        self.get_logger().info(str(self.heist_state))
         # if msg.person_state == 'DETECTED':
         #     self.get_logger().info('Human detected - stopping temporarily')
         #     # Could pause controller or use safety state
@@ -103,18 +111,14 @@ class StateMachineNode(Node):
             drive_msg.header.frame_id = 'base_link'
             drive_msg.drive.speed = speed
             drive_msg.drive.steering_angle = steering_angle
-            self.drive_pub.publish(drive_msg)
+            self.drive_publish.publish(drive_msg)
 
     def on_timer(self):
-
         curr_state = String()
-        curr_state.data = str(self.state)
+        curr_state.data = str(self.heist_state)
         self.state_publish.publish(curr_state)
-        # self.get_logger().info(str(self.state))
-        match self.state:
-
-
-
+        self.get_logger().info(str(self.heist_state))
+        match self.heist_state:
             case HeistState.IDLE:
                 # self.get_logger().info('Waiting for initial pose and goals')
                 if self.initial_pose is not None and len(self.goals) == 2:
@@ -180,7 +184,7 @@ class StateMachineNode(Node):
                     else:
                         self.get_logger().warn('Banana not found after sweeps, continuing')
                         self.sweep_count = 0
-                        self.state = HeistState.PLAN_TRAJ
+                        self.heist_state = HeistState.PLAN_TRAJ
 
             case HeistState.PARK:
                 if self.parking_done_time is None:

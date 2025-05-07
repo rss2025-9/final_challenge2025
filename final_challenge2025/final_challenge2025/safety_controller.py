@@ -12,7 +12,7 @@ class SafetyController(Node):
     def __init__(self):
         super().__init__("safety_controller")
 
-        self.stop_thresh_base = 0.5  # meters (base stopping threshold at very low speeds)
+        self.stop_thresh_base = 0.75  # meters (base stopping threshold at very low speeds)
         self.stop_speed = 0.0  # stopping speed
         # self.min_speed = 1.0 # minimum speed for stopping - this is when we call publish stop command 
         # self.braking_speed = 0.5 # braking speed - how much to slow down gradually 
@@ -95,7 +95,6 @@ class SafetyController(Node):
 
     
 
-
     def ackermann_callback(self, msg):
         # self.get_logger().info(f"Received Drive Command: Speed={msg.drive.speed}, Steering={msg.drive.steering_angle}")
         self.current_speed = msg.drive.speed
@@ -107,7 +106,7 @@ class SafetyController(Node):
         stop_msg.drive.speed = self.hard_stop_speed
         stop_msg.drive.steering_angle = 0.0
         self.drive_pub.publish(stop_msg)
-        self.get_logger().warn("EMERGENCY STOP")
+        self.get_logger().warn("EMERGENCY STOP", throttle_duration_sec=1.0)
 
     def publish_brake_command(self):
         brake_msg = AckermannDriveStamped()

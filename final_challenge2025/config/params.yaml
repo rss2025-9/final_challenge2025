@@ -43,3 +43,6 @@ trajectory_follower:
     drive_topic: "/vesc/high_level/input/nav_0"
     lookahead_distance: 1.2
     speed: 0.5
+state_machine:
+  ros__parameters:
+    drive_topic: "/vesc/high_level/input/nav_0"
