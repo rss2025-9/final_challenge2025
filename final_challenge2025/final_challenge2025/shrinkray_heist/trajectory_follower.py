@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+
 # Driving.
 from ackermann_msgs.msg import AckermannDriveStamped
 from nav_msgs.msg import Odometry
@@ -9,9 +10,21 @@ from tf_transformations import euler_from_quaternion
 
 import numpy as np
 import numpy.typing as npt
+from std_msgs.msg import Bool, String
+from enum import Enum, auto
 
-from .utils import LineTrajectory
+from ..utils import LineTrajectory
 
+class HeistState(Enum):
+    IDLE = auto()
+    PLAN_TRAJ = auto()
+    FOLLOW_TRAJ = auto()
+    WAIT_TRAFFIC = auto()
+    SCOUT = auto()
+    PARK = auto()
+    PICKUP = auto()
+    ESCAPE = auto()
+    COMPLETE = auto()
 
 class PurePursuit(Node):
     """ Implements Pure Pursuit trajectory tracking with a fixed lookahead and speed.
@@ -49,12 +62,22 @@ class PurePursuit(Node):
         )
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
 
-        self.end_pub = self.create_publisher(bool, "/end_trajectory", 1)
+        self.end_pub = self.create_publisher(Bool, "/end_trajectory", 1)
+
+        self.state_sub = self.create_subscription(String, "/state", self.state_cb, 1)
+
+        self.heist_state = None
+
+    def state_cb(self, msg: String):
+        self.heist_state = msg.data
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """
         Publishes the drive command to the vehicle.
         """
+
+        if self.heist_state is None or self.heist_state != "HeistState.FOLLOW_TRAJ": 
+            return
         drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
         drive_cmd.drive.speed = speed
         drive_cmd.drive.steering_angle = steering_angle
@@ -139,8 +162,12 @@ class PurePursuit(Node):
             if closest_idx == len(relative_positions) - 1:
                 self.get_logger().warning("Last point in trajectory reached, stopping.")
                 self.publish_drive_cmd(0.0, 0.0)
-                self.end_pub.publish(True)
+                end_pub_bool = Bool(data=True)
+                self.end_pub.publish(end_pub_bool)
                 return
+            else:
+                end_pub_bool = Bool(data=False)
+                self.end_pub.publish(end_pub_bool)
             # Otherwise, set the goal point to the closest point.
             goal_point = self.get_trajectory(
                 closest_idx, relative_positions, distances

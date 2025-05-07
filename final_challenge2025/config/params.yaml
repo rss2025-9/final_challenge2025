@@ -41,5 +41,5 @@ trajectory_follower:
   ros__parameters:
     odom_topic: "/pf/pose/odom"
     drive_topic: "/vesc/high_level/input/nav_0"
-    lookahead_distance: 4.0 
-    speed: 1.0
+    lookahead_distance: 1.2
+    speed: 0.5
