@@ -107,8 +107,10 @@ class LapAnalysis(Node):
             self.traj_pts = self.traj_pts @ R
             # Rotates the trajectory vector into the new vehicle frame.
             self.traj_vec = self.traj_vec @ R
-            # Recalculates the deviation from the trajectory.
-            self.deviation = np.mean(self.traj_pts[:, 1])
+            # Recalculates the deviation from the trajectory as the y coordinate
+            # at x = 0.
+            t = -self.traj_pts[0, 0] / self.traj_vec[0]
+            self.deviation = self.traj_pts[0, 1] + t * self.traj_vec[1]
             # Publishes the deviation for visualization.
             deviation_msg = Float32()
             deviation_msg.data = self.deviation
@@ -172,8 +174,37 @@ def main(args=None):
     finally:
         # --- plot deviation over time ---
         if node.time_data and node.deviation_data:
+            # clips node times to between 630 and 700 seconds
+            start_time = node.start_odom_time.nanoseconds / 1e9 + 10
+            end_time = node.start_odom_time.nanoseconds / 1e9 + 80
+
+            # Makes sure the length of the time and deviation data is the same.
+            if len(node.time_data) != len(node.deviation_data):
+                min_length = min(len(node.time_data), len(node.deviation_data))
+                node.time_data = node.time_data[:min_length]
+                node.deviation_data = node.deviation_data[:min_length]
+            
+            times = []
+            deviations = []
+            print(node.time_data)
+            print(start_time, end_time)
+            for t, d in zip(node.time_data, node.deviation_data):
+                if start_time <= t <= end_time:
+                    times.append(t)
+                    deviations.append(d)
+            # Gets a max deviation
+            max_deviation = max(deviation for deviation in deviations if 25 > deviation > 0)
+            # Gets a min deviation
+            min_deviation = min(deviation for deviation in deviations if 0 > deviation > -25)
+            # Gets the average deviation
+            avg_deviation = sum(deviation for deviation in deviations if 25 > deviation > -25) / len([deviation for deviation in deviations if 1 > deviation > -1])
+            # Prints the deviation statistics
+            print(f"Max deviation: {max_deviation:.2f} m")
+            print(f"Min deviation: {min_deviation:.2f} m")
+            print(f"Avg deviation: {avg_deviation:.2f} m")
+            
             plt.figure()
-            plt.plot(node.time_data, node.deviation_data)
+            plt.plot(times, deviations)
             plt.xlabel("Time since start (s)")
             plt.ylabel("Lateral deviation (m)")
             plt.title("Trajectory Deviation Over Time")
