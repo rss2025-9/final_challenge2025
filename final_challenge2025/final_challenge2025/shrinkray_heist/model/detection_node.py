@@ -56,7 +56,7 @@ class DetectorNode(Node):
         msg.person_state = 'NONE'
         for (x1, y1, x2, y2), label in preds:
             x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
-            region = frame[y1:y2, x1:x2]
+            region = frame[y1:y2, x1:x2, :]
             if region.size == 0:
                 continue
 
@@ -65,14 +65,14 @@ class DetectorNode(Node):
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
                 # red
-                mr = cv2.inRange(hsv, (170, 0, 0), (255, 20, 20))
+                mr = cv2.inRange(hsv, (0, 100, 100), (15, 225, 225))      # hue, saturation, value
                 red_count = cv2.countNonZero(mr)
                 # green
-                mg = cv2.inRange(hsv, (0, 120, 80), (90, 180, 100))
+                mg = cv2.inRange(hsv, (40, 100, 100), (80, 225, 225))
                 green_count = cv2.countNonZero(mg)
                 if red_count > 0.01 * area:
                     msg.traffic_light_state = 'RED'
-                    self.get_logger().info('TRAFFIC LIGHT! RED')
+                    self.get_logger().info('RED TRAFFIC LIGHT!')
                 elif green_count > 0.01 * area:
                     msg.traffic_light_state = 'GREEN'
                     self.get_logger().info('GREEN TRAFFIC LIGHT!')
