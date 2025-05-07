@@ -85,7 +85,7 @@ class StateMachineNode(Node):
     def detection_cb(self, msg: DetectionStates):
         if msg.traffic_light_state == 'RED':
             self.heist_state = HeistState.WAIT_TRAFFIC
-        elif msg.traffic_light_state == 'GREEN' and self.heist_state == HeistState.WAIT_TRAFFIC:
+        elif msg.traffic_light_state != 'RED' and self.heist_state == HeistState.WAIT_TRAFFIC:
             self.heist_state = HeistState.FOLLOW_TRAJ
         if msg.banana_state == 'DETECTED' and self.heist_state == HeistState.SCOUT:
             self.heist_state = HeistState.PARK
