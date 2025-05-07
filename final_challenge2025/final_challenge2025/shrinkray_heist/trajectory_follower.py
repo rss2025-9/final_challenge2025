@@ -42,7 +42,7 @@ class PurePursuit(Node):
 
         # Pure Pursuit parameters.
         self.declare_parameter('lookahead', 1.2)
-        self.declare_parameter('speed', 1.0)
+        self.declare_parameter('speed', 0.5)
         self.declare_parameter('wheelbase_length', 0.3302)
 
         self.lookahead: float = self.get_parameter('lookahead').get_parameter_value().double_value
@@ -71,22 +71,22 @@ class PurePursuit(Node):
         self.heist_state = None
 
     def state_cb(self, msg: String):
-        with self.state_lock:
-            self.heist_state = msg.data
+        # with self.state_lock:
+        self.heist_state = msg.data
     
     def publish_drive_cmd(self, speed: float, steering_angle: float):
         """
         Publishes the drive command to the vehicle.
         """
-        with self.state_lock:
-            if self.heist_state is None or self.heist_state != "HeistState.FOLLOW_TRAJ": 
-                return
-            drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
-            drive_cmd.drive.speed = speed
-            drive_cmd.drive.steering_angle = steering_angle
-            drive_cmd.header.stamp = self.get_clock().now().to_msg()
-            drive_cmd.header.frame_id = "base_link"
-            self.drive_pub.publish(drive_cmd)
+        # with self.state_lock:
+        if self.heist_state is None or self.heist_state != "HeistState.FOLLOW_TRAJ": 
+            return
+        drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
+        drive_cmd.drive.speed = speed
+        drive_cmd.drive.steering_angle = steering_angle
+        drive_cmd.header.stamp = self.get_clock().now().to_msg()
+        drive_cmd.header.frame_id = "base_link"
+        self.drive_pub.publish(drive_cmd)
 
     def get_trajectory(
         self, closest_idx: int, 
@@ -195,7 +195,7 @@ class PurePursuit(Node):
         # Calculate the steering angle.
         steering_angle: float = np.arctan(gamma * self.wheelbase_length)
         # Calculates the speed proportional to the gamma.
-        speed: float = max(self.speed * (1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))), 1.0)
+        speed: float = max(self.speed * (1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))), min(self.speed, 1.0))
         # Publish the drive command.
         self.publish_drive_cmd(speed, steering_angle)
 

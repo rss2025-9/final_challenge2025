@@ -85,10 +85,16 @@ class StateMachineNode(Node):
         self.get_logger().info(f'Received goals: {self.goals}')
 
     def detection_cb(self, msg: DetectionStates):
-        if msg.traffic_light_state == 'RED':
+        # Stops if it detects a traffic light for the first time
+        # if msg.person_state == "DETECTED":
+        #     self.heist_state = HeistState.WAIT_TRAFFIC
+        #     self.traffic_timer = time.time()
+        if msg.traffic_light_state in ["RED", "YELLOW", "EXISTS"]:
+            self.get_logger().info(f"{msg.traffic_light_state}", throttle_duration_sec = 0.5)
             self.heist_state = HeistState.WAIT_TRAFFIC
             self.traffic_timer = time.time()
-        elif msg.traffic_light_state != 'RED' and self.heist_state == HeistState.WAIT_TRAFFIC and (time.time() - self.traffic_timer) > 0.5:
+            self.publish_drive_cmd(0.0, 0.0)
+        elif self.heist_state == HeistState.WAIT_TRAFFIC and (time.time() - self.traffic_timer) > 0.5:
             self.heist_state = HeistState.FOLLOW_TRAJ
         # Should prioritize stopping over parking over banana.
         elif msg.banana_state == 'DETECTED' and self.heist_state == HeistState.SCOUT:
@@ -96,7 +102,7 @@ class StateMachineNode(Node):
         curr_state = String()
         curr_state.data = str(self.heist_state)
         self.state_publish.publish(curr_state)
-        self.get_logger().info(str(self.heist_state))
+        # self.get_logger().info(str(self.heist_state))
         # if msg.person_state == 'DETECTED':
         #     self.get_logger().info('Human detected - stopping temporarily')
         #     # Could pause controller or use safety state
@@ -117,7 +123,7 @@ class StateMachineNode(Node):
         curr_state = String()
         curr_state.data = str(self.heist_state)
         self.state_publish.publish(curr_state)
-        self.get_logger().info(str(self.heist_state))
+        # self.get_logger().info(str(self.heist_state), throttle_duration_sec=1.0)
         match self.heist_state:
             case HeistState.IDLE:
                 # self.get_logger().info('Waiting for initial pose and goals')

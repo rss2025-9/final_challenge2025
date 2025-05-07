@@ -77,17 +77,17 @@ class DetectorNode(Node):
 
                 debug_msg = self.bridge.cv2_to_imgmsg(stop_mask+my+mg, "mono8")
                 self.debug_pub.publish(debug_msg)
-                if red_count > 0.035 * area:
+                if red_count > 0.02 * area:
                     msg.traffic_light_state = 'RED'
                     self.get_logger().info('RED TRAFFIC LIGHT!')
-                elif yellow_count > 0.035 * area:
+                elif yellow_count > 0.02 * area:
                     msg.traffic_light_state = 'YELLOW'
                     self.get_logger().info('YELLOW TRAFFIC LIGHT!')
-                elif green_count > 0.035 * area:
+                elif green_count > 0.02 * area:
                     msg.traffic_light_state = 'GREEN'
                     self.get_logger().info('GREEN TRAFFIC LIGHT!')
                 else:
-                    msg.traffic_light_state = 'NONE'
+                    msg.traffic_light_state = 'EXISTS'
 
             elif label == 'banana':
                 # hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
