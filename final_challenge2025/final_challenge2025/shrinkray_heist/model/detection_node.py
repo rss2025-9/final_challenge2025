@@ -22,6 +22,7 @@ class DetectorNode(Node):
 
         self.states_publisher = self.create_publisher(DetectionStates, "/detector/states", 1)
         self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 1)
+        self.debug_pub = self.create_publisher(Image, "/detector/debug_img", 1)
 
         self.get_logger().info("Detector Initialized")
 
@@ -65,17 +66,19 @@ class DetectorNode(Node):
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
                 # red
-                mr = cv2.inRange(hsv, (0, 100, 100), (15, 225, 225))      # hue, saturation, value
-                red_count = cv2.countNonZero(mr)
+                stop_mask = cv2.inRange(hsv, (120, 220, 160), (179, 255, 255))  # hue, saturation, value
+                debug_msg = self.bridge.cv2_to_imgmsg(stop_mask, "mono8")
+                self.debug_pub.publish(debug_msg)
+                red_count = cv2.countNonZero(stop_mask)
                 # green
-                mg = cv2.inRange(hsv, (40, 100, 100), (80, 225, 225))
-                green_count = cv2.countNonZero(mg)
-                if red_count > 0.01 * area:
+                my = cv2.inRange(hsv, (60, 220, 160), (119, 255, 255))
+                yellow_count = cv2.countNonZero(my)
+                if red_count > 0.035 * area:
                     msg.traffic_light_state = 'RED'
                     self.get_logger().info('RED TRAFFIC LIGHT!')
-                elif green_count > 0.01 * area:
-                    msg.traffic_light_state = 'GREEN'
-                    self.get_logger().info('GREEN TRAFFIC LIGHT!')
+                elif yellow_count > 0.01 * area:
+                    msg.traffic_light_state = 'YELLOW'
+                    self.get_logger().info('YELLOW TRAFFIC LIGHT!')
                 else:
                     msg.traffic_light_state = 'NONE'
 
