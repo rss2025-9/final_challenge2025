@@ -141,7 +141,8 @@ class PurePursuit(Node):
             # Rotates the trajectory vector into the new vehicle frame.
             self.traj_vec = self.traj_vec @ R
             # Recalculates the deviation from the trajectory.
-            self.deviation = np.mean(self.traj_pts[:, 1])
+            t = -self.traj_pts[0, 0] / self.traj_vec[0]
+            self.deviation = self.traj_pts[0, 1] + t * self.traj_vec[1]
 
 
     def timer_callback(self):
