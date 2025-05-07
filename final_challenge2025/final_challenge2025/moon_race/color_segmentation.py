@@ -36,7 +36,7 @@ def cd_color_segmentation(img, template):
 	# convert the image from RGB to HSV
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
-	# define lower and upper bound for orange color
+	# define lower and upper bound for white color
 	lower_bound = np.array([40, 0, 130])	# hue, saturation (intensity), value (brightness)
 	upper_bound = np.array([255, 30, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 

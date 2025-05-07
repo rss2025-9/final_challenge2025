@@ -57,7 +57,7 @@ class LaneDetector(Node):
         left_img = image[:, :width // 2 + overlap]
         right_img = image[:, width // 2 - overlap:]
 
-        # get the bounding box from color_segmentation.py
+        # get left and right lines from color_segmentation.py
         left_lines_raw, right_lines_raw = None, None
         # Sorts the point in each line so vectors always point up.
         sort_lines = lambda raw: [[line[0][0], line[0][1], line[0][2], line[0][3]] if line[0][1] >= line[0][3] 
