@@ -123,36 +123,21 @@ class PurePursuit(Node):
             goal_point = relative_positions[-1]
         return goal_point
 
-    def real_time_kinematics(self, odometry: Odometry):
+    def real_time_kinematics(self, steering_angle: float, speed: float):
         """
         Evolve the stored trajectory by moving the vehicle forward by
         drive_distance along its x‑axis and rotating the frame by the
         small yaw change from the bicycle model.
         """
-         # calculate the change in time (dt)
-        curr_time: float = odometry.header.stamp.sec + odometry.header.stamp.nanosec * 1e-9
-
-        if self.last_odom_timestamp is None:
-            self.last_odom_timestamp = curr_time
-            return
-        
-        dt: float = curr_time - self.last_odom_timestamp
-        self.last_odom_timestamp = curr_time
-
-        # get odometry data 
-        odom: npt.NDArray[np.float] = np.array(
-            [odometry.twist.twist.linear.x, # vx
-             odometry.twist.twist.linear.y, # vy
-             odometry.twist.twist.angular.z]# yaw
-        ) * dt
-
         # how far we move in this timestep
-        yaw = odom[2]
+        drive_distance = speed * self.refresh_rate
+        # yaw change = v/L * tan(delta) * dt
+        yaw = drive_distance * np.tan(steering_angle) / self.wheelbase_length
 
         with self.trajectory_lock:
             # translate every point backward by drive_distance along the x‑axis
             # since points are in the vehicle frame
-            self.traj_pts -= odom[:2]
+            self.traj_pts[:, 0] -= drive_distance
             # rotation matrix for a frame rotation of -delta_yaw:
             c, s = np.cos(yaw), np.sin(yaw)
             R = np.array([
@@ -256,6 +241,9 @@ class PurePursuit(Node):
         #     f"deviation: {self.deviation:.2f}"
         # )
         self.publish_drive_cmd(speed, steering_angle)
+
+        # Update with real-time kinematics
+        self.real_time_kinematics(steering_angle, speed)
 
     def trajectory_callback(self, msg: WorldTrajInfo):
         """
