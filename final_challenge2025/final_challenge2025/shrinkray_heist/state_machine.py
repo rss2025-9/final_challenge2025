@@ -4,6 +4,7 @@ from rclpy.node import Node
 from enum import Enum, auto
 import threading
 import time
+import os
 
 import numpy as np
 import numpy.typing as npt
@@ -109,6 +110,8 @@ class StateMachine(Node):
         self.create_subscription(Image, self.image_topic, self.image_cb, 1)
         self.annot_pub = self.create_publisher(Image, '/detector/annotated_img', 1)
         self.debug_pub = self.create_publisher(Image, '/detector/debug_img', 1)
+        self.detector_states = {"traffic light": 'NONE', "banana": 'NONE'} 
+        self.banana_counter = 0
         self.get_logger().info("Detector Initialized")
 
         self.create_timer(0.1, self.tick)
@@ -145,11 +148,62 @@ class StateMachine(Node):
         ros_img.header = img_msg.header
 
         # Publish the image
-        self.publisher.publish(ros_img)
-        
+        self.annot_pub.publish(ros_img)
+
+        for (x1, y1, x2, y2), label in predictions:
+            x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
+            region = image[y1:y2, x1:x2, :]
+            if region.size == 0:
+                continue
+
+            if label == 'traffic light':
+                self.get_logger().info("traffic light detected ahead")
+                hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
+                area = region.shape[0] * region.shape[1]
+                # red
+                stop_mask = cv2.inRange(hsv, (120, 220, 160), (179, 255, 255))  # hue, saturation, value
+                red_count = cv2.countNonZero(stop_mask)
+                # yellow
+                my = cv2.inRange(hsv, (60, 220, 160), (119, 255, 255))
+                yellow_count = cv2.countNonZero(my)
+                # green
+                mg = cv2.inRange(hsv, (0, 220, 160), (59, 255, 255))
+                green_count = cv2.countNonZero(mg)
+
+                debug_msg = self.bridge.cv2_to_imgmsg(stop_mask+my+mg, "mono8")
+                self.debug_pub.publish(debug_msg)
+                if red_count > 0.035 * area:
+                    self.detector_states[label] = 'RED'
+                    self.get_logger().info('RED TRAFFIC LIGHT!')
+                elif yellow_count > 0.035 * area:
+                    self.detector_states[label] = 'YELLOW'
+                    self.get_logger().info('YELLOW TRAFFIC LIGHT!')
+                elif green_count > 0.035 * area:
+                    self.detector_states[label] = 'GREEN'
+                    self.get_logger().info('GREEN TRAFFIC LIGHT!')
+                else:
+                    self.detector_states[label] = 'NONE'
+
+            elif self.state == HeistState.SCOUT and label == 'banana': 
+                self.banana_counter += 1
+                if self.banana_counter >= 2: 
+                    self.detector_states[label] = 'DETECTED'
+
+                    self.get_logger().info(f"Parking in front of banana")
+
+                    # Save the image with the banana    
+                    save_path = f"{os.path.dirname(__file__)}/banana_output.png"
+                    out.save(save_path)
+                    self.banana_counter = 0
 
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
+
+        if self.detector_states["traffic light"] == 'RED':
+            self.get_logger().info("STOP! RED LIGHT")
+            self.publish_drive_cmd(0.0, 0.0)
+            self.state = HeistState.WAIT_TRAFFIC
+
         if self.state == HeistState.IDLE:
             if self.start_pose and len(self.goals) >= 2:
                 self.goal_idx = 0
@@ -159,6 +213,24 @@ class StateMachine(Node):
             self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
             self.follow_trajectory(self.odom_msg)
+            if self.end_trajectory:
+                self.state = HeistState.SCOUT
+        elif self.state == HeistState.SCOUT:
+            # sweep code 
+            pass 
+        elif self.state == HeistState.PARK:
+            # park code 
+            pass 
+        elif self.state == HeistState.PICKUP:
+            # pickup code 
+            pass
+        elif self.state == HeistState.ESCAPE:
+            # escape code 
+            pass
+        elif self.state == HeistState.WAIT_TRAFFIC: 
+            if self.detector_states["traffic light"] == 'GREEN':
+                self.get_logger().info("GREEN LIGHT!")
+                self.state = HeistState.FOLLOW_TRAJ # something to change here might be to record the previous state and go back to it
 
     # PLANNER FUNCTIONS # 
     def map_cb(self, msg: OccupancyGrid):
