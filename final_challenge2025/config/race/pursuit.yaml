@@ -2,8 +2,8 @@ race_control:
   ros__parameters:
     drive_topic: "/vesc/high_level/input/nav_0"
 
-    lookahead: 1.5
-    speed: 1.0
+    lookahead: 3.0
+    speed: 1.5
     wheelbase_length: 0.3302
 
     lane_width: 0.35
