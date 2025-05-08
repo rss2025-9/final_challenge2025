@@ -109,6 +109,7 @@ class StateMachine(Node):
         self.create_subscription(Image, self.image_topic, self.image_cb, 1)
         self.annot_pub = self.create_publisher(Image, '/detector/annotated_img', 1)
         self.debug_pub = self.create_publisher(Image, '/detector/debug_img', 1)
+        self.get_logger().info("Detector Initialized")
 
         self.create_timer(0.1, self.tick)
         self.get_logger().info('State Machine Initialized')
@@ -127,8 +128,25 @@ class StateMachine(Node):
         self.get_logger().info(f"Goal added: {msg.pose.position.x}, {msg.pose.position.y}")
 
     # YOLO callback
-    def image_cb(self, msg: Image):
-        pass
+    def image_cb(self, img_msg: Image):
+        # Process image with CV Bridge
+        image = self.bridge.imgmsg_to_cv2(img_msg, "bgr8")
+
+        # Run yolo on this image 
+        results = self.detector.predict(image)
+        predictions = results["predictions"]
+        original_image = results["original_image"]
+
+        out = self.detector.draw_box(original_image, predictions, draw_all=True)
+
+        rgb_np = np.array(out)
+        bgr_np = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2BGR)
+        ros_img = self.bridge.cv2_to_imgmsg(bgr_np, "bgr8")
+        ros_img.header = img_msg.header
+
+        # Publish the image
+        self.publisher.publish(ros_img)
+        
 
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
