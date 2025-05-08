@@ -45,6 +45,7 @@ class HeistState(Enum):
     PLAN_TRAJ = auto()
     FOLLOW_TRAJ = auto()
     SCOUT = auto()
+    PARK = auto()
     PICKUP = auto()
     ESCAPE = auto()
 
@@ -113,6 +114,14 @@ class StateMachine(Node):
         self.get_logger().info("path planner initialized")
 
         # banana parking 
+        self.x_error_integral = 0
+        self.previous_x_error = 0
+        self.previous_time = Time() 
+        self.kp = 1.0 
+        self.ki = 0.0 
+        self.kd = 0.5
+        self.banana_x = None 
+        self.banana_y = None
 
         # detector pubs and subs and params 
         self.create_subscription(Image, self.image_topic, self.image_cb, 1)
@@ -202,16 +211,18 @@ class StateMachine(Node):
             elif self.state == HeistState.SCOUT and label == 'banana': 
                 self.detector_states[label] = 'DETECTED'
                 self.get_logger().info(f"Banana detected")
+
                 # get banana position and park 
                 u = float(x1 + x2) / 2.0 
                 v = float(y2)
-                banana_x, banana_y = self.transformUvToXy(u, v)
+                self.banana_x, self.banana_y = self.transformUvToXy(u, v)
 
                 # Save the image with the banana    
                 save_path = f"{os.path.dirname(__file__)}/banana_output.png"
                 out.save(save_path)
 
-                self.HeistState = HeistState.PICKUP
+                self.HeistState = HeistState.PARK
+            
 
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
@@ -242,8 +253,38 @@ class StateMachine(Node):
             if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
         elif self.state == HeistState.SCOUT:
-            
-            self.publish_drive_cmd(-0.5, 0.0)
+            pass 
+        elif self.state == HeistState.PARK:
+            current_time = self.get_clock().now() 
+            dt = (current_time.nanoseconds - self.previous_time.nanoseconds) / 10e9
+
+            angle_error = np.arctan2(self.banana_y, self.banana_x)
+            x_error = self.banana_x - 0.5 
+
+            self.x_error_integral = np.clip(self.x_error_integral + dt *self.previous_x_error, -10.0, 10.0)
+
+            self.previous_x_error = x_error
+            self.previous_time = current_time 
+
+            reverse = (x_error <= -1.0 and not x_error >= 1.0)
+
+            heading = -angle_error if reverse else angle_error 
+
+            high_angular_error = (np.abs(angle_error)>np.radians(30))
+
+            velocity = 0
+            if not high_angular_error and (-1.0 < x_error < 1.0): 
+                velocity = np.clip(0.5* (self.kp* x_error + self.ki*self.x_error_integral + self.kd *(x_error - self.previous_x_error)/dt), -0.5, 0.5)
+                heading /= 2 
+            else: 
+                velocity = -0.5 if reverse else 0.5 
+
+            if velocity == 0: 
+                self.state = HeistState.PICKUP
+                self.get_logger().info("PARKING DONE")
+                self.publish_drive_cmd(0.0, 0.0)
+            else: 
+                self.publish_drive_cmd(velocity, heading)
         elif self.state == HeistState.PICKUP:
             # park code --> wait 5 seconds and then go into plan trajectory for next banana or escape 
             pass 
@@ -533,7 +574,6 @@ class StateMachine(Node):
         x = homogeneous_xy[0, 0]
         y = homogeneous_xy[1, 0]
         return np.array([x, y], dtype=float)
-    
 
 def main(args=None):
     rclpy.init(args=args)
