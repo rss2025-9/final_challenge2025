@@ -13,7 +13,7 @@ def _label_to_color(label):
 
 
 class Detector:
-    def __init__(self, yolo_dir="/root/yolo", from_tensor_rt=True, threshold=0.5):
+    def __init__(self, yolo_dir="/root/yolo", from_tensor_rt=True, threshold=0.2):
         # local import
         from ultralytics import YOLO
         cls = YOLO
@@ -39,7 +39,7 @@ class Detector:
         ((xmin, ymin, xmax, ymax), class_label) for each detection
         above the given confidence threshold.
         """
-        results = list(self.model(img, verbose=not silent))[0]
+        results = list(self.model(img, verbose=not silent, conf = self.threshold))[0]
         boxes = results.boxes
 
         predictions = []
@@ -128,7 +128,7 @@ class Detector:
 def demo():
     import os
     model = Detector()
-    model.set_threshold(0.5)
+    model.set_threshold(0.01)
     
     img_path = f"{os.path.dirname(__file__)}/../../media/minion.png" 
         

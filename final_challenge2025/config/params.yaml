@@ -39,7 +39,7 @@ state_machine:
     image_topic: "/zed/zed_node/rgb/image_rect_color"
 
     # Planner safety margin (meters)
-    buffer_meters: 1.0
+    buffer_meters: 1.3
 
     # Driving interface
     drive_topic: "/vesc/high_level/input/nav_0"

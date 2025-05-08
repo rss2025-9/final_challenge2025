@@ -78,11 +78,15 @@ class StateMachine(Node):
         self.image_topic = self.get_parameter('image_topic').value
 
         # -- State & data --
+        self.detector = Detector()
+        self.bridge = CvBridge()
         self.state = HeistState.IDLE
         self.start_pose = None
         self.odom_msg = None
         self.goals = []
         self.goal_idx = 0
+        self.end_trajectory = False
+        self.traffic_time = None
 
         # -- pubs & subs --
         self.create_subscription(PoseWithCovarianceStamped, self.initial_pose_topic, self.initial_pose_cb, 1)
@@ -157,6 +161,9 @@ class StateMachine(Node):
                 continue
 
             if label == 'traffic light':
+                if y2 < image.shape[0]//3:
+                    continue
+
                 self.get_logger().info("traffic light detected ahead")
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
@@ -172,7 +179,7 @@ class StateMachine(Node):
 
                 debug_msg = self.bridge.cv2_to_imgmsg(stop_mask+my+mg, "mono8")
                 self.debug_pub.publish(debug_msg)
-                if red_count > 0.035 * area:
+                if red_count > 0.005 * area:
                     self.detector_states[label] = 'RED'
                     self.get_logger().info('RED TRAFFIC LIGHT!')
                 elif yellow_count > 0.035 * area:
@@ -196,13 +203,12 @@ class StateMachine(Node):
                     out.save(save_path)
                     self.banana_counter = 0
 
+            else: 
+                self.detector_states["traffic light"] = "NONE"
+                self.detector_states["banana"] = "NONE"
+
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
-
-        if self.detector_states["traffic light"] == 'RED':
-            self.get_logger().info("STOP! RED LIGHT")
-            self.publish_drive_cmd(0.0, 0.0)
-            self.state = HeistState.WAIT_TRAFFIC
 
         if self.state == HeistState.IDLE:
             if self.start_pose and len(self.goals) >= 2:
@@ -212,8 +218,15 @@ class StateMachine(Node):
             self.plan_path(self.start_pose.pose, self.goals[self.goal_idx])
             self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
-            self.follow_trajectory(self.odom_msg)
-            if self.end_trajectory:
+            if self.detector_states["traffic light"] == 'RED' or self.detector_states["traffic light"] == "YELLOW":
+                self.traffic_time = time.time()
+                self.get_logger().info("STOP! RED LIGHT")
+                self.publish_drive_cmd(0.0, 0.0)
+            elif self.traffic_time is not None and time.time() - self.traffic_time < 5.0:
+                self.publish_drive_cmd(0.0, 0.0)
+            elif self.odom_msg: 
+                self.follow_trajectory(self.odom_msg)
+            elif self.end_trajectory:
                 self.state = HeistState.SCOUT
         elif self.state == HeistState.SCOUT:
             # sweep code 
@@ -227,10 +240,6 @@ class StateMachine(Node):
         elif self.state == HeistState.ESCAPE:
             # escape code 
             pass
-        elif self.state == HeistState.WAIT_TRAFFIC: 
-            if self.detector_states["traffic light"] == 'GREEN':
-                self.get_logger().info("GREEN LIGHT!")
-                self.state = HeistState.FOLLOW_TRAJ # something to change here might be to record the previous state and go back to it
 
     # PLANNER FUNCTIONS # 
     def map_cb(self, msg: OccupancyGrid):
@@ -463,7 +472,10 @@ class StateMachine(Node):
             if closest_idx == len(relative_positions) - 1:
                 self.get_logger().warning("Last point in trajectory reached, stopping.")
                 self.publish_drive_cmd(0.0, 0.0)
+                self.end_trajectory = True
                 return
+            else:
+                self.end_trajectory = False
             # Otherwise, set the goal point to the closest point.
             goal_point = self.get_trajectory(
                 closest_idx, relative_positions, distances
