@@ -169,15 +169,15 @@ class LaneDetector(Node):
 
     # helper function to choose the inner line of the track
     def choose_inner(self, lines, side):
-            if not lines:
-                self.get_logger().warning(f"### No line on {side} ###")
-                return
-            # choose the line with maximum mid_x for left lines
-            if side == "left":
-                return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
-            # choose the line with minimum mid_x for right lines
-            if side == "right":
-                return min(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
+        if not lines:
+            self.get_logger().warning(f"### No line on {side} ###")
+            return
+        # choose the line with maximum mid_x for left lines
+        if side == "left":
+            return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
+        # choose the line with minimum mid_x for right lines
+        if side == "right":
+            return min(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             
     # helper function to draw line
     def draw_line(self, image, line, color):
