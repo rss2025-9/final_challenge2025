@@ -70,7 +70,7 @@ class LaneDetector(Node):
         if left_lines_raw != None:
             left_lines_raw = sort_lines(left_lines_raw)
             # For lines going left, dx should be positive
-            # left_lines_raw = [line for line in left_lines_raw if (line[2] - line[0]) >= 0]
+            left_lines_raw = [line for line in left_lines_raw if (line[2] - line[0]) >= 0]
 
         try:
             right_lines_raw, crop_y_start, _ = cd_color_segmentation(right_img, None, None)
@@ -80,7 +80,7 @@ class LaneDetector(Node):
         if right_lines_raw != None:
             right_lines_raw = sort_lines(right_lines_raw)
             # For lines going right, dx should be negative
-            # right_lines_raw = [line for line in right_lines_raw if (line[2] - line[0]) <= 0]
+            right_lines_raw = [line for line in right_lines_raw if (line[2] - line[0]) <= 0]
 
         # ensure the lane is detected
         if not left_lines_raw and not right_lines_raw:
