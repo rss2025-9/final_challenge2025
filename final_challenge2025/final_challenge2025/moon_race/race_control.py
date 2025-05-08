@@ -144,17 +144,17 @@ class PurePursuit(Node):
             [odometry.twist.twist.linear.x, # vx
              odometry.twist.twist.linear.y, # vy
              odometry.twist.twist.angular.z]# yaw
-        )
+        ) * dt
 
         # how far we move in this timestep
-        yaw = odom[2] * dt
+        yaw = odom[2]
 
         with self.trajectory_lock:
             # translate every point backward by drive_distance along the x‑axis
             # since points are in the vehicle frame
-            self.traj_pts -= odom[:2] * dt
+            self.traj_pts -= odom[:2]
             # rotation matrix for a frame rotation of -delta_yaw:
-            c, s = np.cos(yaw), np.sin(yaw)
+            c, s = np.cos(-yaw), np.sin(-yaw)
             R = np.array([
                 [c, -s],
                 [s, c]
