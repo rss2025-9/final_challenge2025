@@ -123,8 +123,8 @@ class HomographyTransformer(Node):
         # Extract the target point.
         goal = self.transformUvToXy(msg.x, msg.y)
         # Extends the midline to extension.
-        mid_vec /= np.linalg.norm(goal)
-        mid_end = goal + self.extension * goal
+        mid_vec = goal / np.linalg.norm(goal)
+        mid_end = goal + self.extension * mid_vec
 
         turn_side = msg.turn_side
 
