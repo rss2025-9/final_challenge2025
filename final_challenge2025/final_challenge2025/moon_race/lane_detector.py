@@ -64,7 +64,7 @@ class LaneDetector(Node):
                                     else [line[0][2], line[0][3], line[0][0], line[0][1]]
                                     for line in raw]
         try:
-            left_lines_raw, crop_y_start, result = cd_color_segmentation(left_img, None)
+            left_lines_raw, crop_y_start, _ = cd_color_segmentation(left_img, None, None)
         except TypeError:
             self.get_logger().warning(f"Missing lines on the left")
             return
@@ -72,9 +72,9 @@ class LaneDetector(Node):
             left_lines_raw = sort_lines(left_lines_raw)
             # For lines going left, dx should be positive
             left_lines_raw = [line for line in left_lines_raw if (line[2] - line[0]) >= 0]
-        
+
         try:
-            right_lines_raw, crop_y_start, result = cd_color_segmentation(right_img, None)
+            right_lines_raw, crop_y_start, _ = cd_color_segmentation(right_img, None, self)
         except TypeError:
             self.get_logger().warning(f"Missing lines on the right")
             return
@@ -178,8 +178,8 @@ class LaneDetector(Node):
         self.lane_pub.publish(lane)
 
         # Prints a debug image for detection.
-        debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
-        self.debug_pub.publish(debug_msg)
+        # debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
+        # self.debug_pub.publish(debug_msg)
 
     # helper function to choose the inner line of the track
     def choose_inner(self, lines, side):

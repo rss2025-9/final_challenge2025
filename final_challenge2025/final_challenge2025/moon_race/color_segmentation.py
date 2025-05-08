@@ -18,7 +18,7 @@ def image_print(img):
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
 
-def cd_color_segmentation(img, template):
+def cd_color_segmentation(img, template: str = None, node = None):
 	"""
 	Implement the object detection using color segmentation algorithm
 	Input:
@@ -37,8 +37,8 @@ def cd_color_segmentation(img, template):
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for white color
-	lower_bound = np.array([40, 0, 130])	# hue, saturation (intensity), value (brightness)
-	upper_bound = np.array([255, 30, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
+	lower_bound = np.array([0, 0, 140])	# hue, saturation (intensity), value (brightness)
+	upper_bound = np.array([179, 30, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
 	mask = cv2.inRange(hsv_object, lower_bound, upper_bound)
@@ -49,6 +49,9 @@ def cd_color_segmentation(img, template):
 	# Erosion and dilation
 	eroded_mask = cv2.erode(mask, kernel, iterations=1)
 	dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=2)
+	if node is not None:
+		debug_msg = node.bridge.cv2_to_imgmsg(dilated_mask, "mono8")
+		node.debug_pub.publish(debug_msg)
 
 	# filter out the unwanted color
 	result = cv2.bitwise_and(cropped_img, cropped_img, mask=dilated_mask)
