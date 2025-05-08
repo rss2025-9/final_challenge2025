@@ -77,10 +77,12 @@ class StateMachine(Node):
         self.image_topic = self.get_parameter('image_topic').value
 
         # -- State & data --
-        self.heist_state = HeistState.IDLE
+        self.state = HeistState.IDLE
         self.start_pose = None
         self.odom_msg = None
-       
+        self.goals = []
+        self.goal_idx = 0
+
         # -- pubs & subs --
         self.create_subscription(PoseWithCovarianceStamped, self.initial_pose_topic, self.initial_pose_cb, 1)
         self.create_subscription(Odometry, self.odom_topic, self.odom_cb, 1)
@@ -92,6 +94,7 @@ class StateMachine(Node):
         # path planner pubs and subs and params
         self.create_subscription(OccupancyGrid, self.map_topic, self.map_cb, 1)
         self.trajectory = LineTrajectory(node=self, viz_namespace="/planned_trajectory")
+        self.traj_pub = self.create_publisher(PoseArray, '/trajectory/current', 1)
         self.map = None
         self.start_pose = None
         x = 25.900000
@@ -103,18 +106,16 @@ class StateMachine(Node):
         self.get_logger().info("path planner initialized")
 
         # detector pubs and subs and params 
-        self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1)
         self.create_subscription(Image, self.image_topic, self.image_cb, 1)
         self.annot_pub = self.create_publisher(Image, '/detector/annotated_img', 1)
         self.debug_pub = self.create_publisher(Image, '/detector/debug_img', 1)
-        self.states_pub = self.create_publisher(DetectionStates, '/detector/states', 1)
 
         self.create_timer(0.1, self.tick)
         self.get_logger().info('State Machine Initialized')
 
     def initial_pose_cb(self, msg: PoseWithCovarianceStamped):
         """Callback for the initial pose of the robot"""
-        self.start_pose = msg.pose.pose
+        self.start_pose = msg
         self.get_logger().info("Initial pose received.")
     
     def odom_cb(self, msg: Odometry):
@@ -125,14 +126,19 @@ class StateMachine(Node):
         self.goals.append(msg)
         self.get_logger().info(f"Goal added: {msg.pose.position.x}, {msg.pose.position.y}")
 
+    # YOLO callback
+    def image_cb(self, msg: Image):
+        pass
+
     def tick(self):
+        self.get_logger().info(f"State: {self.state}")
         if self.state == HeistState.IDLE:
             if self.start_pose and len(self.goals) >= 2:
                 self.goal_idx = 0
-                self.heist_state = HeistState.PLAN_TRAJ
+                self.state = HeistState.PLAN_TRAJ
         elif self.state == HeistState.PLAN_TRAJ:
-            self.path_plan(self.start_pose, self.goals[self.goal_idx])
-            self.heist_state = HeistState.FOLLOW_TRAJ
+            self.plan_path(self.start_pose.pose, self.goals[self.goal_idx])
+            self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
             self.follow_trajectory(self.odom_msg)
 
@@ -159,6 +165,8 @@ class StateMachine(Node):
         self.get_logger().info(f"Map added.")
 
     def plan_path(self, start_point, end_point):
+        # start_point --> PoseWithCovarianceStamped
+        # end_point --> PoseStamped
 
         start_time = time.time()
         # In world coordinates
@@ -333,7 +341,7 @@ class StateMachine(Node):
         )[2]
 
         # Moves only if the trajectory is initialized, otherwise publish stop.
-        if not self.initialized_traj:
+        if not self.trajectory:
             self.publish_drive_cmd(0.0, 0.0)
             return
         
@@ -365,12 +373,7 @@ class StateMachine(Node):
             if closest_idx == len(relative_positions) - 1:
                 self.get_logger().warning("Last point in trajectory reached, stopping.")
                 self.publish_drive_cmd(0.0, 0.0)
-                end_pub_bool = Bool(data=True)
-                self.end_pub.publish(end_pub_bool)
                 return
-            else:
-                end_pub_bool = Bool(data=False)
-                self.end_pub.publish(end_pub_bool)
             # Otherwise, set the goal point to the closest point.
             goal_point = self.get_trajectory(
                 closest_idx, relative_positions, distances
