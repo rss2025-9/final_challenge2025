@@ -12,8 +12,7 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Line.msg"
-  "msg/LineBounds.msg"
+  "msg/Pixel.msg"
   "msg/WorldTrajInfo.msg"
   "msg/DetectionStates.msg"
   DEPENDENCIES std_msgs geometry_msgs

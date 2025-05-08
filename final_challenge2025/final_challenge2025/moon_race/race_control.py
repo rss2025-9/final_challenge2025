@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 # Driving.
 from ackermann_msgs.msg import AckermannDriveStamped
+from nav_msgs.msg import Odometry
 
 # Numpy
 import numpy as np
@@ -23,6 +24,9 @@ class PurePursuit(Node):
         # Topics to be used.
         self.declare_parameter('drive_topic', "default")
         self.drive_topic: str = self.get_parameter('drive_topic').get_parameter_value().string_value
+        self.declare_parameter('odom_topic', "default")
+        self.odom_topic: str = self.get_parameter('odom_topic').get_parameter_value().string_value
+        self.last_odom_timestamp: float = None
 
         # Pure Pursuit parameters.
         self.declare_parameter('lookahead', 1.2)
@@ -68,6 +72,10 @@ class PurePursuit(Node):
         self.midpoint_sub = self.create_subscription(
             WorldTrajInfo, "/trajectory/midpoint",
             self.trajectory_callback, 1
+        )
+        self.odom_sub = self.create_subscription(
+            Odometry, self.odom_topic,
+            self.real_time_kinematics, 1
         )
         self.drive_pub = self.create_publisher(
             AckermannDriveStamped, self.drive_topic, 1
@@ -124,14 +132,14 @@ class PurePursuit(Node):
         # how far we move in this timestep
         drive_distance = speed * self.refresh_rate
         # yaw change = v/L * tan(delta) * dt
-        delta_yaw = drive_distance * np.tan(steering_angle) / self.wheelbase_length
+        yaw = drive_distance * np.tan(steering_angle) / self.wheelbase_length
 
         with self.trajectory_lock:
             # translate every point backward by drive_distance along the x‑axis
             # since points are in the vehicle frame
             self.traj_pts[:, 0] -= drive_distance
             # rotation matrix for a frame rotation of -delta_yaw:
-            c, s = np.cos(delta_yaw), np.sin(delta_yaw)
+            c, s = np.cos(yaw), np.sin(yaw)
             R = np.array([
                 [c, -s],
                 [s, c]
@@ -234,8 +242,8 @@ class PurePursuit(Node):
         # )
         self.publish_drive_cmd(speed, steering_angle)
 
-        # Update the trajectory given the commanded motion.
-        self.real_time_kinematics(steering_angle, speed) 
+        # Update with real-time kinematics
+        self.real_time_kinematics(steering_angle, speed)
 
     def trajectory_callback(self, msg: WorldTrajInfo):
         """

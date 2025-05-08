@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 
 from visualization_msgs.msg import Marker
-from final_interfaces.msg import LineBounds, WorldTrajInfo
+from final_interfaces.msg import Pixel, WorldTrajInfo
 from geometry_msgs.msg import Pose, Point
 
 #The following collection of pixel locations and corresponding relative
@@ -112,7 +112,7 @@ class HomographyTransformer(Node):
 
         self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
-        self.lane_px_sub = self.create_subscription(LineBounds, "/relative_lane_px", self.lane_detection_callback, 1)
+        self.lane_px_sub = self.create_subscription(Pixel, "/goal_px", self.lane_detection_callback, 1)
 
         if not len(PTS_GROUND_PLANE) == len(PTS_IMAGE_PLANE):
             rclpy.logerr("ERROR: PTS_GROUND_PLANE and PTS_IMAGE_PLANE should be of same length")
@@ -132,34 +132,26 @@ class HomographyTransformer(Node):
         self.get_logger().info("Homography Transformer Initialized")
         self.get_logger().info(f"Homography Matrix: \n {self.h}" )
 
-    def lane_detection_callback(self, msg: LineBounds):
+    def lane_detection_callback(self, msg: Pixel):
 
         # Create world trajectory message
         relative_traj = WorldTrajInfo()
         relative_traj.header.stamp = msg.header.stamp
         relative_traj.header.frame_id = "zed_left_camera_frame"
 
-        # Extract information from message
-        left_start = self.transformUvToXy(msg.left.start.x, msg.left.start.y)
-        left_end = self.transformUvToXy(msg.left.end.x, msg.left.end.y)
-        right_start = self.transformUvToXy(msg.right.start.x, msg.right.start.y)
-        right_end = self.transformUvToXy(msg.right.end.x, msg.right.end.y)
-
-        # Averages the start and end points to create a midline.
-        mid_start = (left_start + right_start) / 2
-        mid_end = (left_end + right_end) / 2
+        # Extract the target point.
+        goal = self.transformUvToXy(msg.x, msg.y)
         # Extends the midline to extension.
-        mid_vec = mid_end - mid_start
-        mid_vec /= np.linalg.norm(mid_vec)
-        mid_end = mid_start + self.extension * mid_vec
+        mid_vec = goal / np.linalg.norm(goal)
+        mid_end = goal + self.extension * mid_vec
 
         turn_side = msg.turn_side
 
         relative_traj.poses.extend([
             Pose(
                 position=Point(
-                    x=mid_start[0],
-                    y=mid_start[1]
+                    x=goal[0],
+                    y=goal[1]
                 )
             ),
             Pose(
@@ -170,7 +162,7 @@ class HomographyTransformer(Node):
             )
         ])
         relative_traj.turn_side = turn_side
-        relative_traj.deviation = mid_start[1]
+        relative_traj.deviation = goal[1]
         self.lane_pub.publish(relative_traj)
 
     def transformUvToXy(self, u, v):
