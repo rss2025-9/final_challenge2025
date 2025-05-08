@@ -154,7 +154,7 @@ class PurePursuit(Node):
             # since points are in the vehicle frame
             self.traj_pts -= odom[:2]
             # rotation matrix for a frame rotation of -delta_yaw:
-            c, s = np.cos(-yaw), np.sin(-yaw)
+            c, s = np.cos(yaw), np.sin(yaw)
             R = np.array([
                 [c, -s],
                 [s, c]
