@@ -4,6 +4,7 @@ from rclpy.node import Node
 from enum import Enum, auto
 import threading
 import time
+from rclpy.time import Time
 import os
 
 import numpy as np
@@ -29,9 +30,14 @@ from .model.detector import Detector
 PTS_IMAGE_PLANE = [[287, 312], [466, 310], [411, 255], [292, 254]]
 PTS_GROUND_PLANE = [[12.5, 2], [12.5, -5.5], [20.5, -5.5], [20.5, 2]]
 METERS_PER_INCH = 0.0254
-np_pts_ground = np.array(PTS_GROUND_PLANE) * METERS_PER_INCH
+np_pts_ground = np.array(PTS_GROUND_PLANE)
+np_pts_ground = np_pts_ground * METERS_PER_INCH
 np_pts_ground = np.float32(np_pts_ground[:, np.newaxis, :])
-np_pts_image = np.float32(np.array(PTS_IMAGE_PLANE)[:, np.newaxis, :])
+
+np_pts_image = np.array(PTS_IMAGE_PLANE)
+np_pts_image = np_pts_image * 1.0
+np_pts_image = np.float32(np_pts_image[:, np.newaxis, :])
+
 homography_matrix, _ = cv2.findHomography(np_pts_image, np_pts_ground)
 
 class HeistState(Enum):
@@ -106,12 +112,13 @@ class StateMachine(Node):
                     [0,0,1]])
         self.get_logger().info("path planner initialized")
 
+        # banana parking 
+
         # detector pubs and subs and params 
         self.create_subscription(Image, self.image_topic, self.image_cb, 1)
         self.annot_pub = self.create_publisher(Image, '/detector/annotated_img', 1)
         self.debug_pub = self.create_publisher(Image, '/detector/debug_img', 1)
         self.detector_states = {"traffic light": 'NONE', "banana": 'NONE'} 
-        self.banana_counter = 0
         self.get_logger().info("Detector Initialized")
 
         self.create_timer(0.1, self.tick)
@@ -193,44 +200,18 @@ class StateMachine(Node):
                     self.detector_states[label] = 'NONE'
 
             elif self.state == HeistState.SCOUT and label == 'banana': 
-                self.banana_counter += 1
                 self.detector_states[label] = 'DETECTED'
-                if self.banana_counter > 3: 
-                    self.get_logger().info(f"Banana detected")
+                self.get_logger().info(f"Banana detected")
+                # get banana position and park 
+                u = float(x1 + x2) / 2.0 
+                v = float(y2)
+                banana_x, banana_y = self.transformUvToXy(u, v)
 
-                    # get banana position 
-                    x = float(x1 + x2) / 2.0 
-                    y = float(y1 + y2) / 2.0
-                    pixel = np.array([x, y, 1.0]).reshape(3, 1)
-                    world_coordinates = homography_matrix.dot(pixel)
-                    world_coordinates /= world_coordinates[2]
-                    banana_x = float(world_coordinates[0])
-                    banana_y = float(world_coordinates[1])
+                # Save the image with the banana    
+                save_path = f"{os.path.dirname(__file__)}/banana_output.png"
+                out.save(save_path)
 
-                    # Save the image with the banana    
-                    save_path = f"{os.path.dirname(__file__)}/banana_output.png"
-                    out.save(save_path)
-                    self.banana_counter = 0
-
-                    # park in front of the banana
-                    if self.odom_msg is not None: 
-                        car_x = self.odom_msg.pose.pose.position.x
-                        car_y = self.odom_msg.pose.pose.position.y  
-                        vector = np.array([car_x - banana_x, car_y - banana_y])
-                        vector /= np.linalg.norm(vector)
-                        park_point = np.array([banana_x, banana_y]) - vector * 0.5
-                        park_goal = PoseStamped()
-                        park_goal.header.frame_id = "map"
-                        park_goal.header.stamp = self.get_clock().now().to_msg()
-                        park_goal.pose.position.x = float(park_point[0])
-                        park_goal.pose.position.y = float(park_point[1])
-                        
-                        self.plan_path(self.odom_msg.pose.pose, park_goal)
-                        self.follow_trajectory(self.odom_msg)
-                        self.HeistState = HeistState.PICKUP
-            
-            else: 
-                self.banana_counter = 0
+                self.HeistState = HeistState.PICKUP
 
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
@@ -250,7 +231,7 @@ class StateMachine(Node):
                 return
 
             if self.red_detected:
-                if self.detector_states["traffic light"] in ('GREEN', 'NONE'):
+                if self.detector_states["traffic light"] in ('GREEN'):
                     self.red_detected = False
                     self.get_logger().info("Done waiting for traffic, proceeding.")
                 else:
@@ -261,10 +242,10 @@ class StateMachine(Node):
             if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
         elif self.state == HeistState.SCOUT:
-            # sweep code 
-            pass 
+            
+            self.publish_drive_cmd(-0.5, 0.0)
         elif self.state == HeistState.PICKUP:
-            # park code 
+            # park code --> wait 5 seconds and then go into plan trajectory for next banana or escape 
             pass 
         elif self.state == HeistState.ESCAPE:
             # escape code 
@@ -530,6 +511,29 @@ class StateMachine(Node):
         speed: float = max(self.speed * (1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))), min(self.speed, 1.0))
         # Publish the drive command.
         self.publish_drive_cmd(speed, steering_angle)
+
+    # Banana Parking 
+    def transformUvToXy(self, u, v):
+        """
+        u and v are pixel coordinates.
+        The top left pixel is the origin, u axis increases to right, and v axis
+        increases down.
+
+        Returns a normal non-np 1x2 matrix of xy displacement vector from the
+        camera to the point on the ground plane.
+        Camera points along positive x axis and y axis increases to the left of
+        the camera.
+
+        Units are in meters.
+        """
+        homogeneous_point = np.array([[u], [v], [1]])
+        xy = np.dot(homography_matrix, homogeneous_point)
+        scaling_factor = 1.0 / xy[2, 0]
+        homogeneous_xy = xy * scaling_factor
+        x = homogeneous_xy[0, 0]
+        y = homogeneous_xy[1, 0]
+        return np.array([x, y], dtype=float)
+    
 
 def main(args=None):
     rclpy.init(args=args)

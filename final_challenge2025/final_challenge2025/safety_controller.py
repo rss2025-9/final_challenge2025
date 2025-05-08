@@ -12,13 +12,13 @@ class SafetyController(Node):
     def __init__(self):
         super().__init__("safety_controller")
 
-        self.stop_thresh_base = 0.75  # meters (base stopping threshold at very low speeds)
+        self.stop_thresh_base = 0.3  # meters (base stopping threshold at very low speeds)
         self.stop_speed = 0.0  # stopping speed
         # self.min_speed = 1.0 # minimum speed for stopping - this is when we call publish stop command 
         # self.braking_speed = 0.5 # braking speed - how much to slow down gradually 
         self.current_speed = 0.0 # current speed updated based on drive msgs 
         self.current_steer = 0.0 # current angle based off drive msgs
-        self.step_brake_speed = 1.0  # Slow down to this speed before stop (instead of hard stop immediately)
+        self.step_brake_speed = 0.0  # Slow down to this speed before stop (instead of hard stop immediately)
         self.hard_stop_speed = 0.0   # Full stop speed
         self.min_slowing_distance = 1.5  # distance to start slowing down (m)
 
