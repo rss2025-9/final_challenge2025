@@ -113,7 +113,7 @@ class StateMachine(Node):
                     [0,0,1]])
         self.get_logger().info("path planner initialized")
 
-        # banana parking 
+        # banana  
         self.x_error_integral = 0
         self.previous_x_error = 0
         self.previous_time = Time() 
@@ -122,6 +122,11 @@ class StateMachine(Node):
         self.kd = 0.5
         self.banana_x = None 
         self.banana_y = None
+        # scout
+        self.scout_stage = None 
+        self.scout_start_time = None
+        # pick up 
+        self.pickup_start_time = None
 
         # detector pubs and subs and params 
         self.create_subscription(Image, self.image_topic, self.image_cb, 1)
@@ -221,6 +226,9 @@ class StateMachine(Node):
                 save_path = f"{os.path.dirname(__file__)}/banana_output.png"
                 out.save(save_path)
 
+                self.scout_stage = None 
+                self.scout_start_time = None 
+
                 self.HeistState = HeistState.PARK
             
 
@@ -232,7 +240,13 @@ class StateMachine(Node):
                 self.goal_idx = 0
                 self.state = HeistState.PLAN_TRAJ
         elif self.state == HeistState.PLAN_TRAJ:
-            self.plan_path(self.start_pose.pose, self.goals[self.goal_idx])
+            if self.goal_idx == 0: 
+                self.plan_path(self.start_pose.pose, self.goals[0])
+            elif self.goal_idx == 1: 
+                curr_pose = PoseWithCovarianceStamped()
+                curr_pose.header = self.odom_msg.header
+                curr_pose.pose = self.odom_msg.pose
+                self.plan_path(curr_pose, self.goals[1])
             self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
             if not self.red_detected and self.detector_states["traffic light"] == 'RED':
@@ -253,7 +267,44 @@ class StateMachine(Node):
             if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
         elif self.state == HeistState.SCOUT:
-            pass 
+            if self.scout_stage is None:
+                self.scout_stage = 'backup'
+                self.scout_start_time = self.get_clock().now()
+                self.get_logger().info("Entering SCOUT: backing up")
+
+            elapsed = (self.get_clock().now().nanoseconds 
+                    - self.scout_start_time.nanoseconds) / 1e9
+            
+            # durations 
+            backup_dur = 1.0 
+            rotate_dur = 3.0 
+            forward_dur = 1.0 
+
+            if self.scout_stage == 'backup':
+                if elapsed < backup_dur:  
+                    self.publish_drive_cmd(-0.5, 0.0)
+                else:
+                    self.scout_stage = 'rotate_cw'
+                    self.scout_start_time = self.get_clock().now()
+            elif self.scout_stage == "rotate_cw":
+                if elapsed < rotate_dur:
+                    self.publish_drive_cmd(0.5, 1.0)
+                else:
+                    self.scout_stage = "rotate_back"
+                    self.scout_start_time = self.get_clock().now()
+            elif self.scout_stage == "rotate_back": 
+                if elapsed < rotate_dur: 
+                    self.publish_drive_cmd(0.5, -1.0)
+                else:
+                    self.scout_stage = "forward"
+                    self.scout_start_time = self.get_clock().now()
+            elif self.scout_stage == "forward": 
+                if elapsed < forward_dur: 
+                    self.publish_drive_cmd(0.5, 0.0)
+                else:
+                    self.scout_stage = "rotate_cw"
+                    self.scout_start_time = self.get_clock().now()
+            
         elif self.state == HeistState.PARK:
             current_time = self.get_clock().now() 
             dt = (current_time.nanoseconds - self.previous_time.nanoseconds) / 10e9
@@ -287,10 +338,35 @@ class StateMachine(Node):
                 self.publish_drive_cmd(velocity, heading)
         elif self.state == HeistState.PICKUP:
             # park code --> wait 5 seconds and then go into plan trajectory for next banana or escape 
-            pass 
+            if self.pickup_start_time is None: 
+                self.pickup_start_time = self.get_clock().now() 
+                self.publish_drive_cmd(0.0, 0.0)
+            
+            elapsed = (self.get_clock().now().nanoseconds
+               - self.pickup_start_time.nanoseconds) / 1e9
+            
+            if elapsed < 5.0:
+                self.publish_drive_cmd(0.0, 0.0)
+            else:
+                # stop, reset timer to None, and advance state
+                self.publish_drive_cmd(0.0, 0.0)
+                self.pickup_start_time = None
+                self.get_logger().info("PICKUP complete")
+
+                # choose next state
+                self.goal_idx += 1
+                if self.goal_idx < len(self.goals):
+                    self.state = HeistState.PLAN_TRAJ
+                else:
+                    self.state = HeistState.ESCAPE
+
         elif self.state == HeistState.ESCAPE:
-            # escape code 
-            pass
+            curr_pose = PoseWithCovarianceStamped()
+            curr_pose.header = self.odom_msg.header
+            curr_pose.pose = self.odom_msg.pose
+            self.plan_plan(curr_pose, self.start_pose)
+            self.follow_trajectory(self.odom_msg)
+            self.get_logger().info("Escapinggg...")
 
     # PLANNER FUNCTIONS # 
     def map_cb(self, msg: OccupancyGrid):
