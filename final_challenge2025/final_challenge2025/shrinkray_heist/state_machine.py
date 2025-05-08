@@ -39,7 +39,6 @@ class HeistState(Enum):
     PLAN_TRAJ = auto()
     FOLLOW_TRAJ = auto()
     SCOUT = auto()
-    PARK = auto()
     PICKUP = auto()
     ESCAPE = auto()
 
@@ -83,7 +82,6 @@ class StateMachine(Node):
         self.odom_msg = None
         self.goals = []
         self.goal_idx = 0
-        self.traffic_time = None
         self.red_detected = False
 
         # -- pubs & subs --
@@ -157,6 +155,9 @@ class StateMachine(Node):
             region = image[y1:y2, x1:x2, :]
             if region.size == 0:
                 continue
+            
+            self.detector_states["traffic light"] = "NONE"
+            self.detector_states["banana"] = "NONE"
 
             if label == 'traffic light':
                 if y2 < image.shape[0]//3:
@@ -179,31 +180,57 @@ class StateMachine(Node):
                 self.debug_pub.publish(debug_msg)
                 if red_count > 0.005 * area:
                     self.detector_states[label] = 'RED'
+                    self.red_detected = True
                     self.get_logger().info('RED TRAFFIC LIGHT!')
                 elif yellow_count > 0.035 * area:
                     self.detector_states[label] = 'YELLOW'
                     self.get_logger().info('YELLOW TRAFFIC LIGHT!')
                 elif green_count > 0.035 * area:
                     self.detector_states[label] = 'GREEN'
+                    self.red_detected = False
                     self.get_logger().info('GREEN TRAFFIC LIGHT!')
                 else:
                     self.detector_states[label] = 'NONE'
 
             elif self.state == HeistState.SCOUT and label == 'banana': 
                 self.banana_counter += 1
-                if self.banana_counter >= 2: 
-                    self.detector_states[label] = 'DETECTED'
+                self.detector_states[label] = 'DETECTED'
+                if self.banana_counter > 3: 
+                    self.get_logger().info(f"Banana detected")
 
-                    self.get_logger().info(f"Parking in front of banana")
+                    # get banana position 
+                    x = float(x1 + x2) / 2.0 
+                    y = float(y1 + y2) / 2.0
+                    pixel = np.array([x, y, 1.0]).reshape(3, 1)
+                    world_coordinates = homography_matrix.dot(pixel)
+                    world_coordinates /= world_coordinates[2]
+                    banana_x = float(world_coordinates[0])
+                    banana_y = float(world_coordinates[1])
 
                     # Save the image with the banana    
                     save_path = f"{os.path.dirname(__file__)}/banana_output.png"
                     out.save(save_path)
                     self.banana_counter = 0
 
+                    # park in front of the banana
+                    if self.odom_msg is not None: 
+                        car_x = self.odom_msg.pose.pose.position.x
+                        car_y = self.odom_msg.pose.pose.position.y  
+                        vector = np.array([car_x - banana_x, car_y - banana_y])
+                        vector /= np.linalg.norm(vector)
+                        park_point = np.array([banana_x, banana_y]) - vector * 0.5
+                        park_goal = PoseStamped()
+                        park_goal.header.frame_id = "map"
+                        park_goal.header.stamp = self.get_clock().now().to_msg()
+                        park_goal.pose.position.x = float(park_point[0])
+                        park_goal.pose.position.y = float(park_point[1])
+                        
+                        self.plan_path(self.odom_msg.pose.pose, park_goal)
+                        self.follow_trajectory(self.odom_msg)
+                        self.HeistState = HeistState.PICKUP
+            
             else: 
-                self.detector_states["traffic light"] = "NONE"
-                self.detector_states["banana"] = "NONE"
+                self.banana_counter = 0
 
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
@@ -236,12 +263,9 @@ class StateMachine(Node):
         elif self.state == HeistState.SCOUT:
             # sweep code 
             pass 
-        elif self.state == HeistState.PARK:
+        elif self.state == HeistState.PICKUP:
             # park code 
             pass 
-        elif self.state == HeistState.PICKUP:
-            # pickup code 
-            pass
         elif self.state == HeistState.ESCAPE:
             # escape code 
             pass
