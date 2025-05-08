@@ -38,12 +38,10 @@ class HeistState(Enum):
     IDLE = auto()
     PLAN_TRAJ = auto()
     FOLLOW_TRAJ = auto()
-    WAIT_TRAFFIC = auto()
     SCOUT = auto()
     PARK = auto()
     PICKUP = auto()
     ESCAPE = auto()
-    COMPLETE = auto()
 
 class StateMachine(Node):
     def __init__(self):
@@ -85,8 +83,8 @@ class StateMachine(Node):
         self.odom_msg = None
         self.goals = []
         self.goal_idx = 0
-        self.end_trajectory = False
         self.traffic_time = None
+        self.red_detected = False
 
         # -- pubs & subs --
         self.create_subscription(PoseWithCovarianceStamped, self.initial_pose_topic, self.initial_pose_cb, 1)
@@ -218,16 +216,23 @@ class StateMachine(Node):
             self.plan_path(self.start_pose.pose, self.goals[self.goal_idx])
             self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
-            if self.detector_states["traffic light"] == 'RED' or self.detector_states["traffic light"] == "YELLOW":
-                self.traffic_time = time.time()
-                self.get_logger().info("STOP! RED LIGHT")
+            if not self.red_detected and self.detector_states["traffic light"] == 'RED':
+                self.red_detected = True
+                self.get_logger().info("STOPPING due to red light.")
                 self.publish_drive_cmd(0.0, 0.0)
-            elif self.traffic_time is not None and time.time() - self.traffic_time < 5.0:
-                self.publish_drive_cmd(0.0, 0.0)
-            elif self.odom_msg: 
+                return
+
+            if self.red_detected:
+                if self.detector_states["traffic light"] in ('GREEN', 'NONE'):
+                    self.red_detected = False
+                    self.get_logger().info("Done waiting for traffic, proceeding.")
+                else:
+                    self.get_logger().info("STOPPING due to red light.")
+                    self.publish_drive_cmd(0.0, 0.0)
+                    return
+            
+            if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
-            elif self.end_trajectory:
-                self.state = HeistState.SCOUT
         elif self.state == HeistState.SCOUT:
             # sweep code 
             pass 
@@ -472,10 +477,8 @@ class StateMachine(Node):
             if closest_idx == len(relative_positions) - 1:
                 self.get_logger().warning("Last point in trajectory reached, stopping.")
                 self.publish_drive_cmd(0.0, 0.0)
-                self.end_trajectory = True
+                self.state = HeistState.SCOUT
                 return
-            else:
-                self.end_trajectory = False
             # Otherwise, set the goal point to the closest point.
             goal_point = self.get_trajectory(
                 closest_idx, relative_positions, distances
