@@ -9,8 +9,7 @@ from cv_bridge import CvBridge
 import numpy as np
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Point #geometry_msgs not in CMake file
-from final_interfaces.msg import Line, LineBounds
+from final_interfaces.msg import Pixel
 
 # import color segmentation algorithm; call this function in ros_image_callback
 from .color_segmentation import cd_color_segmentation
@@ -26,7 +25,7 @@ class LaneDetector(Node):
         super().__init__("lane_detector")
 
         # Subscribe to ZED camera RGB frames
-        self.lane_pub = self.create_publisher(LineBounds, "/relative_lane_px", 10)
+        self.lane_pub = self.create_publisher(Pixel, "/goal_px", 10)
         self.debug_pub = self.create_publisher(Image, "/lane_debug_img", 10)
         self.image_sub = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.image_callback, 5)
         self.bridge = CvBridge() # Converts between ROS images and OpenCV Images
@@ -143,39 +142,26 @@ class LaneDetector(Node):
         right_start = np.array(right_inner_line[0:2], dtype=float)
         right_end = np.array(right_inner_line[2:4], dtype=float)
         
-        # From point perspective left vec should be going to the right.
-        # From point perspective right vec should be going to the left.
-        if left_inner_line[0] - left_inner_line[2] < 0:
-            left_start, left_end = left_end, left_start
-        if right_inner_line[0] - right_inner_line[2] > 0:
-            right_start, right_end = right_end, right_start
+        # Gets the vector intersection of the two lines, which from point perspective
+        # will lead to something that is collinear with a point in the line center.
+        left_vec = left_end - left_start
+        right_vec = right_end - right_start
+
+        delta = left_vec[0] * right_vec[1] - left_vec[1] * right_vec[0]
+        if delta == 0:
+            self.get_logger().warn("Lines are parallel!")
+            return
+        lane_width_px = right_start - left_start
+        t = (lane_width_px[0] * right_vec[1] - lane_width_px[1] * right_vec[0]) / delta
 
         # publish the center points array in pixel
-        lane = LineBounds()
-        lane.header.stamp = self.get_clock().now().to_msg()
-        lane.header.frame_id = "zed_left_camera_frame"
-        lane.left = Line(
-            start=Point(
-                x=left_start[0],
-                y=left_start[1]
-            ),
-            end=Point(
-                x=left_end[0],
-                y=left_end[1]
-            )
-        )
-        lane.right = Line(
-            start=Point(
-                x=right_start[0],
-                y=right_start[1]
-            ),
-            end=Point(
-                x=right_end[0],
-                y=right_end[1]
-            )
-        )
-        lane.turn_side = turn_side
-        self.lane_pub.publish(lane)
+        intersection = Pixel()
+        intersection.header.stamp = self.get_clock().now().to_msg()
+        intersection.header.frame_id = "zed_left_camera_frame"
+        intersection.x = int(left_start[0] + t * left_vec[0])
+        intersection.y = int(left_start[1] + t * left_vec[1])
+        intersection.turn_side = turn_side
+        self.intersection_pub.publish(intersection)
 
         # Prints a debug image for detection.
         debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
