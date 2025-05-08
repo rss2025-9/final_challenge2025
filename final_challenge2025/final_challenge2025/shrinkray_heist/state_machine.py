@@ -1,258 +1,406 @@
+#!/usr/bin/env python
 import rclpy
 from rclpy.node import Node
-import time
+from enum import Enum, auto
 import threading
+import time
 
-# from scipy.ndimage import binary_dilation
-from geometry_msgs.msg import PoseArray, PoseStamped
+import numpy as np
+import numpy.typing as npt
+import heapq
+import math
+import cv2
 from cv_bridge import CvBridge
-from final_interfaces.msg import DetectionStates
+from scipy.ndimage import distance_transform_edt
+
+from sensor_msgs.msg import Image
+from nav_msgs.msg import OccupancyGrid, Odometry
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray, Pose
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray
-from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool, String
+from tf_transformations import euler_from_quaternion
 
-from . import HeistState
+from final_interfaces.msg import DetectionStates
+from ..utils import LineTrajectory
+from .model.detector import Detector
 
-class StateMachineNode(Node):
-    # constructor 
+# Homography setup
+PTS_IMAGE_PLANE = [[287, 312], [466, 310], [411, 255], [292, 254]]
+PTS_GROUND_PLANE = [[12.5, 2], [12.5, -5.5], [20.5, -5.5], [20.5, 2]]
+METERS_PER_INCH = 0.0254
+np_pts_ground = np.array(PTS_GROUND_PLANE) * METERS_PER_INCH
+np_pts_ground = np.float32(np_pts_ground[:, np.newaxis, :])
+np_pts_image = np.float32(np.array(PTS_IMAGE_PLANE)[:, np.newaxis, :])
+homography_matrix, _ = cv2.findHomography(np_pts_image, np_pts_ground)
+
+class HeistState(Enum):
+    IDLE = auto()
+    PLAN_TRAJ = auto()
+    FOLLOW_TRAJ = auto()
+    WAIT_TRAFFIC = auto()
+    SCOUT = auto()
+    PARK = auto()
+    PICKUP = auto()
+    ESCAPE = auto()
+    COMPLETE = auto()
+
+class StateMachine(Node):
     def __init__(self):
         super().__init__('state_machine')
-        self.get_logger().info('Heist State Machine Initialized')
-        
-        self.declare_parameter('drive_topic', "default")
-        self.drive_topic: str = self.get_parameter('drive_topic').get_parameter_value().string_value
+        # -- Params --
+        # General params 
+        self.declare_parameter('initial_pose_topic', 'default')
 
+        # path planner params
+        self.declare_parameter('map_topic', 'default')
+        self.declare_parameter('odom_topic', 'default')
+        self.declare_parameter('buffer_meters', 1.0)
+
+        # trajectory follower params 
+        self.declare_parameter('drive_topic', '/drive')
+        self.declare_parameter('lookahead', 1.2)
+        self.declare_parameter('speed', 1.0)
+        self.declare_parameter('wheelbase_length', 0.3302)
+
+        # detector params
+        self.declare_parameter('image_topic', '/zed/zed_node/rgb/image_rect_color')
+
+        # retrieve
+        self.map_topic = self.get_parameter('map_topic').value
+        self.odom_topic = self.get_parameter('odom_topic').value
+        self.initial_pose_topic = self.get_parameter('initial_pose_topic').value
+        self.buffer_meters = self.get_parameter('buffer_meters').value
+        self.drive_topic = self.get_parameter('drive_topic').value
+        self.lookahead = self.get_parameter('lookahead').value
+        self.speed = self.get_parameter('speed').value
+        self.wheelbase_length = self.get_parameter('wheelbase_length').value
+        self.image_topic = self.get_parameter('image_topic').value
+
+        # -- State & data --
         self.heist_state = HeistState.IDLE
+        self.start_pose = None
+        self.odom_msg = None
+       
+        # -- pubs & subs --
+        self.create_subscription(PoseWithCovarianceStamped, self.initial_pose_topic, self.initial_pose_cb, 1)
+        self.create_subscription(Odometry, self.odom_topic, self.odom_cb, 1)
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
 
-        self.initial_pose = None
-        self.goals = []
-        self.goal_idx = None
-        self.pickup_time = None
-        self.bridge = CvBridge()
+        # basement point publisher subscriber 
+        self.create_subscription(PoseStamped, '/goal_pose', self.goal_cb, 1)
 
-        self.create_subscription(PoseArray, '/shrinkray_part', self.goals_cb, 1) # 2 goal positions 
-        self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.pose_cb, 1) # initial pose
-        self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1) # custom YOLO detection messages
-        self.create_subscription(Odometry, '/pf/pose/odom', self.odom_cb, 1) # odometry data
+        # path planner pubs and subs and params
+        self.create_subscription(OccupancyGrid, self.map_topic, self.map_cb, 1)
+        self.trajectory = LineTrajectory(node=self, viz_namespace="/planned_trajectory")
+        self.map = None
+        self.start_pose = None
+        x = 25.900000
+        y = 48.50000
+        theta = 3.14
+        self.transform = np.array([[np.cos(theta), -np.sin(theta), x],
+                    [np.sin(theta), np.cos(theta), y],
+                    [0,0,1]])
+        self.get_logger().info("path planner initialized")
 
-        # dummy fix for the trajectory follower
-        self.create_subscription(Bool, '/end_trajectory', self.trajectory_cb, 1)
+        # detector pubs and subs and params 
+        self.create_subscription(DetectionStates, '/detector/states', self.detection_cb, 1)
+        self.create_subscription(Image, self.image_topic, self.image_cb, 1)
+        self.annot_pub = self.create_publisher(Image, '/detector/annotated_img', 1)
+        self.debug_pub = self.create_publisher(Image, '/detector/debug_img', 1)
+        self.states_pub = self.create_publisher(DetectionStates, '/detector/states', 1)
 
-        self.start_publish = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 1)
-        self.goal_publish = self.create_publisher(PoseStamped, "/goal_pose", 1)
-        self.state_publish = self.create_publisher(String, "/state", 1)
-        self.drive_publish = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
+        self.create_timer(0.1, self.tick)
+        self.get_logger().info('State Machine Initialized')
 
-        self.create_timer(0.1, self.on_timer)
-
-        self.parking_started = False
-        self.parking_done_time = None
-
-        self.sweep_count = 0
-        self.max_sweep_attempts = 3
-        self.sweep_start_time = None
-        self.sweep_duration = 2.0
-        self.sweep_lock = threading.Lock()
-
-        self.drive_lock = threading.Lock()
-        self.traffic_timer = time.time()
-
-        self.pose_set = False
-        self.curr_pos = None
-        self.finished_traj = False
-    
-    # dummy fix for the trajectory follower
-    def trajectory_cb(self, msg: Bool):
-        if msg.data:
-            self.finished_traj = True
-            self.heist_state = HeistState.SCOUT
-        else:
-            self.finished_traj = False
+    def initial_pose_cb(self, msg: PoseWithCovarianceStamped):
+        """Callback for the initial pose of the robot"""
+        self.start_pose = msg.pose.pose
+        self.get_logger().info("Initial pose received.")
     
     def odom_cb(self, msg: Odometry):
-        self.curr_pos = msg
+        self.odom_msg = msg
 
-    def pose_cb(self, msg: PoseWithCovarianceStamped):
-        if self.pose_set:
-            return
-        self.initial_pose = msg
-        self.get_logger().info(f'Initial pose: {self.initial_pose.pose.pose.position.x}, {self.initial_pose.pose.pose.position.y}')
-        self.pose_set = True
+    def goal_cb(self, msg: PoseStamped):
+        """Callback for the goal pose of the robot"""
+        self.goals.append(msg)
+        self.get_logger().info(f"Goal added: {msg.pose.position.x}, {msg.pose.position.y}")
 
-    def goals_cb(self, msg: PoseArray):
-        self.goals = [(p.position.x, p.position.y) for p in msg.poses]
-        self.get_logger().info(f'Received goals: {self.goals}')
-
-    def detection_cb(self, msg: DetectionStates):
-        if msg.traffic_light_state == 'RED':
-            self.heist_state = HeistState.WAIT_TRAFFIC
-            self.traffic_timer = time.time()
-        elif msg.traffic_light_state != 'RED' and self.heist_state == HeistState.WAIT_TRAFFIC and (time.time() - self.traffic_timer) > 0.5:
+    def tick(self):
+        if self.state == HeistState.IDLE:
+            if self.start_pose and len(self.goals) >= 2:
+                self.goal_idx = 0
+                self.heist_state = HeistState.PLAN_TRAJ
+        elif self.state == HeistState.PLAN_TRAJ:
+            self.path_plan(self.start_pose, self.goals[self.goal_idx])
             self.heist_state = HeistState.FOLLOW_TRAJ
-        # Should prioritize stopping over parking over banana.
-        elif msg.banana_state == 'DETECTED' and self.heist_state == HeistState.SCOUT:
-            self.heist_state = HeistState.PARK
-        curr_state = String()
-        curr_state.data = str(self.heist_state)
-        self.state_publish.publish(curr_state)
-        self.get_logger().info(str(self.heist_state))
-        # if msg.person_state == 'DETECTED':
-        #     self.get_logger().info('Human detected - stopping temporarily')
-        #     # Could pause controller or use safety state
+        elif self.state == HeistState.FOLLOW_TRAJ:
+            self.follow_trajectory(self.odom_msg)
 
-    def publish_sweep_motion(self, direction: int = 1):
-        self.publish_drive_cmd(0.2, direction * 0.34)
+    # PLANNER FUNCTIONS # 
+    def map_cb(self, msg: OccupancyGrid):
+        """Takes the Occupancy Grid of the map and creates an internal representation"""
+        # occupied_threshold = 0.65
+
+        self.get_logger().info("Map received.")
+
+        map_width = msg.info.width
+        map_height = msg.info.height
+        map_data = np.array(msg.data).reshape((map_height, map_width))
+        self.map_resolution = msg.info.resolution
+        self.map_origin = msg.info.origin.position
+
+        # Mark the grid as 1 if its occupancy value is -1
+        self.map = (map_data == -1).astype(int)
+
+        # marginalize the walls so that we have some safety distance away from the walls
+        free_space = (self.map == 0)
+        self.distance_map = distance_transform_edt(free_space) * self.map_resolution
+
+        self.get_logger().info(f"Map added.")
+
+    def plan_path(self, start_point, end_point):
+
+        start_time = time.time()
+        # In world coordinates
+        start_x = start_point.pose.position.x
+        start_y = start_point.pose.position.y
+        end_x = end_point.pose.position.x
+        end_y = end_point.pose.position.y
+
+        start_map = self.world_to_map(start_x, start_y) 
+        end_map = self.world_to_map(end_x, end_y)
+        # self.get_logger().info(f"Start grid: {start_map}, Map value: {self.map[start_map[1], start_map[0]]}")
+        # self.get_logger().info(f"Goal grid: {end_map}, Map value: {self.map[end_map[1], end_map[0]]}")
+
+        path = self.a_star_search(start_map, end_map, self.map)  # returns (y, x) 
+        # self.get_logger().info(f"Path: {path}")
+        if path is None or len(path) == 0:
+            self.get_logger().error("No path found!")
+            return
+        self.get_logger().info(f"Path found with {len(path)} waypoints.")
+
+        elasped = time.time() - start_time
+        self.get_logger().info(f"Path planning took {elasped:.3f} seconds")
+
+        world_coords = []
+        for (row, col) in path:
+            world_xy = self.map_to_world(col, row)
+            world_coords.append(world_xy)
+
+        self.trajectory.clear()
+        for point in world_coords:
+            self.trajectory.addPoint(point)
+        
+        self.traj_pub.publish(self.trajectory.toPoseArray())
+        self.trajectory.publish_viz()
     
-    def publish_drive_cmd(self, speed: float, steering_angle: float):
-        with self.drive_lock:
-            drive_msg = AckermannDriveStamped()
-            drive_msg.header.stamp = self.get_clock().now().to_msg()
-            drive_msg.header.frame_id = 'base_link'
-            drive_msg.drive.speed = speed
-            drive_msg.drive.steering_angle = steering_angle
-            self.drive_publish.publish(drive_msg)
+    def world_to_map(self, x, y):
+        """World to map index using transform matrix (inverse of the transform)."""
+        point = np.array([x, y, 1.0])
+        pixel = self.transform @ point
+        pixel = pixel / self.map_resolution
+        return int(pixel[1]), int(pixel[0])  # (row, col)
+    
+    def map_to_world(self, col, row):
+        """Map index to world coordinates using inverse transform."""
+        pixel = np.array([col * self.map_resolution, row * self.map_resolution, 1.0])
+        point = np.linalg.inv(self.transform) @ pixel
+        return float(point[0]), float(point[1])
 
-    def on_timer(self):
-        curr_state = String()
-        curr_state.data = str(self.heist_state)
-        self.state_publish.publish(curr_state)
-        self.get_logger().info(str(self.heist_state))
-        match self.heist_state:
-            case HeistState.IDLE:
-                # self.get_logger().info('Waiting for initial pose and goals')
-                if self.initial_pose is not None and len(self.goals) == 2:
-                    self.get_logger().info('Initial pose and goals received')
-                    self.heist_state = HeistState.PLAN_TRAJ
-                    self.goal_idx = 0
+    def heuristic(self, a, b):
+        # Euclidean distance from a to b
+        x = abs(a[0] - b[0])
+        y = abs(a[1] - b[1])
+        return math.hypot(x, y)
+    
+    def get_neighbors(self, map, node):
+        (y, x) = node
+        neighbors = []
+        candidates = [(y+1, x), (y-1, x), (y, x+1), (y, x-1)]
+        for candidate in candidates:
+            # check if the candidate neighbor is out of the map
+            if 0 <= candidate[0] < map.shape[0] and 0 <= candidate[1] < map.shape[1]:
+                # add the candidate to neighbors list only if it has no obstacle
+                if map[candidate[0], candidate[1]] == 0:
+                    neighbors.append(candidate)
+        # self.get_logger().info(f"Neighbors: {neighbors}")
+        return neighbors
+    
+    def reconstruct_path(self, came_from, start_point, end_point):
+        """Go backward from end point to start point to construct a path"""
+        current = end_point
+        path = []
+        # self.get_logger().info(f"Came from: {came_from}")
+        # return an empty path if no path is found
+        if end_point not in came_from:
+            return []
+        while current != start_point:
+            path.append(current)
+            current = came_from[current]
+        path.append(start_point)
+        path.reverse()
+        return path
 
-            case HeistState.PLAN_TRAJ:
-                self.get_logger().info(f'Planning to goal #{self.goal_idx}')
+    def a_star_search(self, start_point, end_point, map):
+        frontier = []
+        heapq.heappush(frontier, (0, start_point))
 
-                # New planning for republishing current pose as start point 
-                if self.curr_pos is not None: 
-                    start_pose = PoseWithCovarianceStamped()
-                    start_pose.header.frame_id ='map'
-                    start_pose.header.stamp = self.get_clock().now().to_msg()
-                    start_pose.pose.pose = self.curr_pos.pose.pose
-                    self.start_publish.publish(start_pose)
-                    self.get_logger().info(f'Republished start as current pose: {self.curr_pos.pose.pose.position.x}, {self.curr_pos.pose.pose.position.y}')
+        came_from = {}  # to reconstruct the path (node: came_from node)
+        c_score = {start_point: 0}
+        f_score = {start_point: self.heuristic(start_point, end_point)}
 
-                goal_pose = PoseStamped() 
-                goal_pose.header.frame_id = 'map'  
-                goal_pose.header.stamp = self.get_clock().now().to_msg()
-                goal_pose.pose.position.x = self.goals[self.goal_idx][0]
-                goal_pose.pose.position.y = self.goals[self.goal_idx][1]
-                self.goal_publish.publish(goal_pose)
-                self.get_logger().info(f'Published goal: {goal_pose.pose.position.x}, {goal_pose.pose.position.y}')
-                
-                self.heist_state = HeistState.FOLLOW_TRAJ
-                
-                # Old planning code for start and goal pose publishing
-                # if self.goal_idx == 0: 
-                #     self.start_publish.publish(self.initial_pose)
-                #     goal_pose = PoseStamped()
-                #     goal_pose.header.frame_id = 'map'
-                #     goal_pose.header.stamp = self.get_clock().now().to_msg()
-                #     goal_pose.pose.position.x = self.goals[0][0]
-                #     goal_pose.pose.position.y = self.goals[0][1]
-                #     self.goal_publish.publish(goal_pose)
-                # else:
-                #     start_pose = PoseWithCovarianceStamped()
-                #     start_pose.header.frame_id ='map'
-                #     start_pose.header.stamp = self.get_clock().now().to_msg()
-                #     start_pose.pose.pose.position.x = self.goals[self.goal_idx - 1][0]
-                #     start_pose.pose.pose.position.y = self.goals[self.goal_idx - 1][1]
-                #     self.start_publish.publish(start_pose)
-                #     goal_pose = PoseStamped()
-                #     goal_pose.header.frame_id = 'map'
-                #     goal_pose.header.stamp = self.get_clock().now().to_msg()
-                #     goal_pose.pose.position.x = self.goals[self.goal_idx][0]
-                #     goal_pose.pose.position.y = self.goals[self.goal_idx][1]
-                #     self.goal_publish.publish(goal_pose)
-                # self.heist_state = HeistState.FOLLOW_TRAJ
+        while frontier:
+            current = heapq.heappop(frontier)[1]    # get the node with the lowest priority
 
-            case HeistState.FOLLOW_TRAJ:
-                # if self.curr_pos.pose.pose.position.x == self.goals[self.goal_idx][0] and self.curr_pos.pose.pose.position.y == self.goals[self.goal_idx][1]:
-                #     self.get_logger().info(f'Reached goal #{self.goal_idx}')
-                #     self.pickup_time = None
-                #     self.heist_state = HeistState.SCOUT
+            if current == end_point:
+                self.get_logger().info(f"Current node: {current}")
+                return self.reconstruct_path(came_from, start_point, current)
+            
+            for neighbor in self.get_neighbors(map, current):
 
-                # dummy fix 
-                if self.finished_traj:
-                    self.get_logger().info(f'Reached goal #{self.goal_idx}')
-                    self.pickup_time = None
-                    self.finished_traj = False
-                    self.heist_state = HeistState.SCOUT
-
-            case HeistState.WAIT_TRAFFIC:
-                # publish stop cmd
-                self.get_logger().info('No green light, waiting')
-                self.publish_drive_cmd(0.0, 0.0)
-
-            case HeistState.SCOUT:
-                with self.sweep_lock:
-                    if self.sweep_count < self.max_sweep_attempts:
-                        if self.sweep_start_time is None:
-                            self.sweep_start_time = time.time()
-                            direction = 1 if self.sweep_count % 2 == 0 else -1
-                            self.publish_sweep_motion(direction)
-                            self.get_logger().info(f'Sweep #{self.sweep_count + 1} started')
-                        elif time.time() - self.sweep_start_time > self.sweep_duration:
-                            self.get_logger().info(f'Sweep #{self.sweep_count + 1} complete')
-                            self.sweep_count += 1
-                            self.sweep_start_time = None
-                    else:
-                        self.get_logger().warn('Banana not found after sweeps, continuing')
-                        self.sweep_count = 0
-                        self.heist_state = HeistState.PLAN_TRAJ
-
-            case HeistState.PARK:
-                if self.parking_done_time is None:
-                    self.parking_done_time = time.time() + 5.0
-                    self.get_logger().info('Starting parking maneuver')
-                    self.parking_started = True
-                elif time.time() >= self.parking_done_time:
-                    self.get_logger().info('Parking complete')
-                    self.goal_idx += 1
-                    self.sweep_count = 0
-                    self.parking_started = False
-                    if self.goal_idx >= len(self.goals):
-                        self.heist_state = HeistState.ESCAPE
-                    else:
-                        self.heist_state = HeistState.PLAN_TRAJ
+                # add penalty depending on how close the node is to the obstacle
+                distance_to_obstacle = self.distance_map[neighbor[0], neighbor[1]]
+                if distance_to_obstacle < self.buffer_meters:  # safety threshold of 0.7 (tune this value)
+                    penalty = (self.buffer_meters - distance_to_obstacle) * 10
                 else:
-                    # publish stop cmd
-                    self.get_logger().info('Parking')
-                    with self.drive_lock:
-                        self.publish_drive_cmd(0.0, 0.0)
+                    penalty = 0
 
-            case HeistState.ESCAPE:
-                self.get_logger().info('Escaping')
-                start_pose = PoseWithCovarianceStamped()
-                start_pose.header.frame_id ='map'
-                start_pose.header.stamp = self.get_clock().now().to_msg()
-                start_pose.pose.pose.position.x = self.goals[-1][0]
-                start_pose.pose.pose.position.y = self.goals[-1][1]
-                self.start_publish.publish(self.goals[-1])
-                goal_pose = PoseStamped()
-                goal_pose.header.frame_id = 'map'
-                goal_pose.header.stamp = self.get_clock().now().to_msg()
-                goal_pose.pose = self.initial_pose.pose.pose
-                self.goal_publish.publish(goal_pose)
-                if self.curr_pos.pose.pose.position.x == self.initial_pose.pose.pose.position.x and self.curr_pos.pose.pose.position.y == self.initial_pose.pose.pose.position.y:
-                    self.heist_state = HeistState.COMPLETE
+                new_c_cost = c_score[current] + 1 + penalty  # cost of moving to neighbor
+                if neighbor not in c_score or new_c_cost < c_score[neighbor]:
+                    c_score[neighbor] = new_c_cost
+                    # f(x) = c(x) + h(x) from lecture
+                    f_score[neighbor] = new_c_cost + self.heuristic(neighbor, end_point)
+                    heapq.heappush(frontier, (f_score[neighbor], neighbor))
+                    came_from[neighbor] = current
 
-            case HeistState.COMPLETE:
-                self.get_logger().info('Heist COMPLETE')
+        return None   # no path found
+    
+
+    # TRAJECTORY FOLLOWING FUNCTIONS #
+    def publish_drive_cmd(self, speed: float, steering_angle: float):
+        """
+        Publishes the drive command to the vehicle.
+        """
+        drive_cmd: AckermannDriveStamped = AckermannDriveStamped()
+        drive_cmd.drive.speed = speed
+        drive_cmd.drive.steering_angle = steering_angle
+        drive_cmd.header.stamp = self.get_clock().now().to_msg()
+        drive_cmd.header.frame_id = "base_link"
+        self.drive_pub.publish(drive_cmd)
+    
+    def get_trajectory(
+        self, closest_idx: int, 
+        relative_positions: npt.NDArray[np.float64], 
+        distances: npt.NDArray[np.float64]
+    ) -> npt.NDArray:
+        """
+        Returns the trajectory points as a numpy array.
+        """
+        goal_point: npt.NDArray[np.float64] = None
+        for i in range(closest_idx + 1, len(relative_positions)):
+            if distances[i] >= self.lookahead:
+                # Determines the unit vector of the trajectory.
+                traj: npt.NDArray[np.float] = relative_positions[i] - relative_positions[i-1]
+                traj /= np.linalg.norm(traj)
+                # Finds the unit vector of the first point to the vehicle.
+                p2v: np.float = relative_positions[i-1] / distances[i]
+                # Dot product of traj and p2v, to determine distance projection.
+                delta: npt.NDArray = np.dot(p2v, traj)
+                # Parameterized equation of the line to find the goal point.
+                t: np.float = -delta + np.sqrt(
+                    delta ** 2 + self.lookahead ** 2 - 1
+                )
+                # Get the goal point + safety from square root.
+                goal_point = (relative_positions[i-1] if np.isnan(t)
+                                else relative_positions[i-1] + t * traj)
+                break
+        # If no points are found, use the last point.
+        if goal_point is None:
+            goal_point = relative_positions[-1]
+        return goal_point
+    
+    def follow_trajectory(self, odometry_msg: Odometry):
+        """
+        Takes the current position of the robot, finds the nearest point on the
+        path, sets that as the goal point, and navigates towards it.
+        """
+        # Gets vectorized Pose of the robot.
+        pose: Pose = odometry_msg.pose.pose
+        position: npt.NDArray = np.array([pose.position.x, pose.position.y])
+        yaw: np.float64 = -euler_from_quaternion(
+            [pose.orientation.x, pose.orientation.y,
+             pose.orientation.z, pose.orientation.w]
+        )[2]
+
+        # Moves only if the trajectory is initialized, otherwise publish stop.
+        if not self.initialized_traj:
+            self.publish_drive_cmd(0.0, 0.0)
+            return
+        
+        # Calculates the distance to all points in the trajectory, vectorized.
+        relative_positions: npt.NDArray = np.array(
+            self.trajectory.points
+        ) - position  # vector from vehicle to each trajectory point
+        distances: npt.NDArray = np.linalg.norm(relative_positions, axis=1)
+        # Rotates relative positions to the vehicle's frame.
+        rotation_matrix: npt.NDArray = np.array([
+            [np.cos(yaw), -np.sin(yaw)],
+            [np.sin(yaw), np.cos(yaw)]
+        ])
+        # Calculates whether the points are ahead of the vehicle.
+        forwards: npt.NDArray[np.bool] = relative_positions @ rotation_matrix.T[:, 0] > 0
+        # Replaces the distance of behind points with a large value.
+        distances_ahead: npt.NDArray = np.where(forwards, distances, np.inf)
+        # Finds the index of the closest point ahead.
+        closest_idx: int = np.argmin(distances_ahead)
+
+        # Only consider points with positive projection on the heading vector.
+        goal_point: npt.NDArray[np.float64]
+        # If no points are ahead.
+        if not np.any(forwards):
+            self.get_logger().warning("No points ahead of the vehicle.")
+            # Get the closest point in the trajectory.
+            closest_idx = np.argmin(distances)
+            # If the closest point is the last one, stop.
+            if closest_idx == len(relative_positions) - 1:
+                self.get_logger().warning("Last point in trajectory reached, stopping.")
+                self.publish_drive_cmd(0.0, 0.0)
+                end_pub_bool = Bool(data=True)
+                self.end_pub.publish(end_pub_bool)
+                return
+            else:
+                end_pub_bool = Bool(data=False)
+                self.end_pub.publish(end_pub_bool)
+            # Otherwise, set the goal point to the closest point.
+            goal_point = self.get_trajectory(
+                closest_idx, relative_positions, distances
+            )
+        elif distances[closest_idx] >= self.lookahead:
+            # If the closest point is beyond the lookahead distance, interpolate
+            # between the car and it to find the goal point.
+            goal_point = relative_positions[closest_idx] * \
+                         (distances[closest_idx] / self.lookahead)
+        else:
+            # Find the first point that is within the lookahead distance.
+            goal_point = self.get_trajectory(
+                closest_idx, relative_positions, distances
+            )
+
+        # Rotates the goal point to the vehicle's frame.
+        goal_point = goal_point @ rotation_matrix.T
+
+        # Calculate the curvature 
+        gamma: float = 2 * goal_point[1] / (self.lookahead ** 2)
+
+        # Calculate the steering angle.
+        steering_angle: float = np.arctan(gamma * self.wheelbase_length)
+        # Calculates the speed proportional to the gamma.
+        speed: float = max(self.speed * (1 - np.tanh(np.log(self.wheelbase_length * np.abs(gamma) + 1))), min(self.speed, 1.0))
+        # Publish the drive command.
+        self.publish_drive_cmd(speed, steering_angle)
 
 def main(args=None):
-    global state_machine
     rclpy.init(args=args)
-    state_machine = StateMachineNode()
+    state_machine = StateMachine()
     rclpy.spin(state_machine)
     rclpy.shutdown()
-
-state_machine = None
-if __name__ == '__main__':
-    main()

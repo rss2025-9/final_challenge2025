@@ -30,19 +30,21 @@ particle_filter:
 
     optimize_publishes: true
 
-trajectory_planner:
-  ros__parameters:
-    odom_topic: "/pf/pose/odom"
-    map_topic: "/map"
-    scan_topic: "/scan"
-    initial_pose_topic: "/initialpose"
-    buffer_meters: 1.75
-trajectory_follower:
-  ros__parameters:
-    odom_topic: "/pf/pose/odom"
-    drive_topic: "/vesc/high_level/input/nav_0"
-    lookahead_distance: 1.2
-    speed: 0.5
 state_machine:
   ros__parameters:
+    # Input topics
+    map_topic: "/map"
+    odom_topic: "/pf/pose/odom"
+    initial_pose_topic: "/initialpose"
+    image_topic: "/zed/zed_node/rgb/image_rect_color"
+
+    # Planner safety margin (meters)
+    buffer_meters: 1.75
+
+    # Driving interface
     drive_topic: "/vesc/high_level/input/nav_0"
+
+    # Pure Pursuit parameters
+    lookahead: 1.2
+    speed: 0.5
+    wheelbase_length: 0.3302

@@ -58,6 +58,9 @@ class DetectorNode(Node):
         self.get_logger().info("Detector Initialized")
         self.state_callback_msg = String()
 
+        self.state = None 
+        self.curr_pos = None 
+
     def callback(self, img_msg):
         # Process image with CV Bridge
         image = self.bridge.imgmsg_to_cv2(img_msg, "bgr8")
@@ -81,9 +84,6 @@ class DetectorNode(Node):
 
         detection_msg = self.check_states(image, predictions, out)
         self.states_publisher.publish(detection_msg)
-
-        self.state = None
-        self.curr_pos = None
 
     def state_callback(self, msg):
         self.state = msg.data
