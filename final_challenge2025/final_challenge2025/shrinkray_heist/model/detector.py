@@ -50,7 +50,7 @@ class Detector:
                 x1, y1, x2, y2 = xyxy.tolist()
                 # Map class index to class label using model/ results
                 label = results.names[int(cls_idx.item())]
-                predictions.append(((x1, y1, x2, y2), label))
+                predictions.append(((x1, y1, x2, y2), label, conf.item()))
         
         #convert original image to rgb
         original_image = results.orig_img
@@ -102,12 +102,12 @@ class Detector:
         # print(f"Labels: {[x[-1] for x in predictions]}")
 
         if draw_all:
-            for (x1, y1, x2, y2), label in predictions:
+            for (x1, y1, x2, y2), label, _ in predictions:
                 color = _label_to_color(label)
                 draw.rectangle([x1, y1, x2, y2], outline=color, width=line_width)
                 draw.text((x1, y1 - text_offset), label, fill=color, font=font)
         else:
-            (x1, y1, x2, y2), label = predictions[0]
+            (x1, y1, x2, y2), label, _ = predictions[0]
             color = _label_to_color(label)
             draw.rectangle([x1, y1, x2, y2], outline=color, width=line_width)
             draw.text((x1, y1 - text_offset), label, fill=color, font=font)

@@ -171,7 +171,7 @@ class StateMachine(Node):
         # Publish the image
         self.annot_pub.publish(ros_img)
 
-        for (x1, y1, x2, y2), label in predictions:
+        for (x1, y1, x2, y2), label, confidence in predictions:
             x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
             region = image[y1:y2, x1:x2, :]
             if region.size == 0:
@@ -181,7 +181,7 @@ class StateMachine(Node):
             self.detector_states["banana"] = "NONE"
 
             if label == 'traffic light':
-                if y2 < image.shape[0]//3:
+                if y2 < image.shape[0]//3 or confidence < 0.2:
                     continue
 
                 self.get_logger().info("traffic light detected ahead")
