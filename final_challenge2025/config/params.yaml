@@ -39,12 +39,12 @@ state_machine:
     image_topic: "/zed/zed_node/rgb/image_rect_color"
 
     # Planner safety margin (meters)
-    buffer_meters: 1.3
+    buffer_meters: 0.9
 
     # Driving interface
     drive_topic: "/vesc/high_level/input/nav_0"
 
     # Pure Pursuit parameters
     lookahead: 1.2
-    speed: 0.5
+    speed: 0.6
     wheelbase_length: 0.3302

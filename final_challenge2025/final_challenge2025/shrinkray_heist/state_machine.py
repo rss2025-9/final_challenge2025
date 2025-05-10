@@ -117,9 +117,9 @@ class StateMachine(Node):
         self.x_error_integral = 0
         self.previous_x_error = 0
         self.previous_time = Time() 
-        self.kp = 1.0 
+        self.kp = 2.0
         self.ki = 0.0 
-        self.kd = 0.5
+        self.kd = 1.0
         self.banana_x = None 
         self.banana_y = None
 
@@ -179,9 +179,6 @@ class StateMachine(Node):
             self.detector_states["banana"] = "NONE"
 
             if label == 'traffic light':
-                if y2 < image.shape[0]//3 or confidence < 0.5:
-                    continue
-
                 self.get_logger().info("traffic light detected ahead")
                 hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
                 area = region.shape[0] * region.shape[1]
@@ -192,19 +189,19 @@ class StateMachine(Node):
                 my = cv2.inRange(hsv, (60, 220, 160), (119, 255, 255))
                 yellow_count = cv2.countNonZero(my)
                 # green
-                mg = cv2.inRange(hsv, (0, 220, 160), (59, 255, 255))
+                mg = cv2.inRange(hsv, (0, 220, 130), (59, 255, 255))
                 green_count = cv2.countNonZero(mg)
 
                 debug_msg = self.bridge.cv2_to_imgmsg(stop_mask+my+mg, "mono8")
                 self.debug_pub.publish(debug_msg)
-                if red_count > 0.005 * area:
+                if red_count > 0.02 * area:
                     self.detector_states[label] = 'RED'
                     self.red_detected = True
                     self.get_logger().info('RED TRAFFIC LIGHT!')
                 elif yellow_count > 0.035 * area:
                     self.detector_states[label] = 'YELLOW'
                     self.get_logger().info('YELLOW TRAFFIC LIGHT!')
-                elif green_count > 0.035 * area:
+                elif green_count > 0.005 * area:
                     self.detector_states[label] = 'GREEN'
                     self.red_detected = False
                     self.get_logger().info('GREEN TRAFFIC LIGHT!')
@@ -232,8 +229,7 @@ class StateMachine(Node):
         if self.state == HeistState.IDLE:
             if self.start_pose and len(self.goals) >= 2:
                 self.goal_idx = 0
-                # self.state = HeistState.PLAN_TRAJ
-                self.state = HeistState.SCOUT
+                self.state = HeistState.PLAN_TRAJ
         elif self.state == HeistState.PLAN_TRAJ:
             if self.goal_idx == 0: 
                 self.plan_path(self.start_pose.pose, self.goals[0])
@@ -244,20 +240,11 @@ class StateMachine(Node):
                 self.plan_path(curr_pose.pose, self.goals[1])
             self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
-            if not self.red_detected and self.detector_states["traffic light"] == 'RED':
+            if (not self.red_detected and self.detector_states["traffic light"] == 'RED') or self.red_detected:
                 self.red_detected = True
                 self.get_logger().info("STOPPING due to red light.")
                 self.publish_drive_cmd(0.0, 0.0)
                 return
-
-            if self.red_detected:
-                if self.detector_states["traffic light"] in ('GREEN'):
-                    self.red_detected = False
-                    self.get_logger().info("Done waiting for traffic, proceeding.")
-                else:
-                    self.get_logger().info("STOPPING due to red light.")
-                    self.publish_drive_cmd(0.0, 0.0)
-                    return
             
             if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
@@ -293,7 +280,7 @@ class StateMachine(Node):
             else: 
                 velocity = -0.5 if reverse else 0.5 
 
-            if np.sqrt((self.banana_x)**2 + (self.banana_y)**2) < 0.75: 
+            if np.sqrt((self.banana_x)**2 + (self.banana_y)**2) < 0.8: 
                 self.state = HeistState.PICKUP
                 self.get_logger().info("PARKING DONE")
                 self.publish_drive_cmd(0.0, 0.0)
@@ -308,8 +295,10 @@ class StateMachine(Node):
             elapsed = (self.get_clock().now().nanoseconds
                - self.pickup_start_time.nanoseconds) / 1e9
             
-            if elapsed < 5.0:
+            if elapsed < 10.0:
                 self.publish_drive_cmd(0.0, 0.0)
+            elif elapsed < 14.0: 
+                self.publish_drive_cmd(-0.6, 0.0)
             else:
                 # stop, reset timer to None, and advance state
                 self.publish_drive_cmd(0.0, 0.0)
@@ -327,7 +316,7 @@ class StateMachine(Node):
             curr_pose = PoseWithCovarianceStamped()
             curr_pose.header = self.odom_msg.header
             curr_pose.pose = self.odom_msg.pose
-            self.plan_plan(curr_pose, self.start_pose)
+            self.plan_path(curr_pose.pose, self.start_pose)
             self.follow_trajectory(self.odom_msg)
             self.get_logger().info("Escapinggg...")
 

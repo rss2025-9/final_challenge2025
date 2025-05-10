@@ -20,7 +20,7 @@ class SafetyController(Node):
         self.current_steer = 0.0 # current angle based off drive msgs
         self.step_brake_speed = 0.0  # Slow down to this speed before stop (instead of hard stop immediately)
         self.hard_stop_speed = 0.0   # Full stop speed
-        self.min_slowing_distance = 1.5  # distance to start slowing down (m)
+        self.min_slowing_distance = 0.5  # distance to start slowing down (m)
 
         self.lookahead_angle = np.pi/36  #narrower cone: +/- 5 deg
 
@@ -86,6 +86,7 @@ class SafetyController(Node):
         # Self-explanatory
         if closest_pt < stop_thresh:
             self.publish_stop_command()
+            self.get_logger().info("stopping")
             #self.record_data(closest_pt, self.hard_stop_speed, "STOP")
         elif closest_pt < self.min_slowing_distance:
             self.publish_brake_command()
