@@ -239,7 +239,7 @@ class StateMachine(Node):
                 self.banana_x, self.banana_y = self.transformUvToXy(u, v)
 
                 # Save the image with the banana    
-                save_path = f"{os.path.dirname(__file__)}/banana_output.png"
+                save_path = f"{os.path.dirname(__file__)}/banana_output{self.goal_idx}.png"
                 out.save(save_path)
 
                 self.state = HeistState.PARK
