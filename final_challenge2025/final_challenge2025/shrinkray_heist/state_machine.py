@@ -84,7 +84,7 @@ class StateMachine(Node):
         # -- State & data --
         self.detector = Detector()
         self.bridge = CvBridge()
-        self.state = HeistState.IDLE
+        self.state = HeistState.SCOUT
         self.start_pose = None
         self.odom_msg = None
         self.goals = []
@@ -117,9 +117,13 @@ class StateMachine(Node):
         self.x_error_integral = 0
         self.previous_x_error = 0
         self.previous_time = Time() 
-        self.kp = 2.0
+        self.integral_bounds = (-10.0, 10.0)
+        self.distance_error_thresholds = [-1.0, 1.0]
+        self.parking_velocity = 0.8
+        self.parking_distance = 0.1 
+        self.kp = 1.0
         self.ki = 0.0 
-        self.kd = 1.0
+        self.kd = 0.5
         self.banana_x = None 
         self.banana_y = None
 
@@ -127,9 +131,9 @@ class StateMachine(Node):
         self.sweep_start_time = None
         self.scout_phase = None  # 'backup', 'back_sweep', 'fwd_sweep'
         self.scout_backup_dur = 1.0       # seconds backing up straight
-        self.scout_sweep_dur  = 2.0       # seconds per arc
+        self.scout_sweep_dur  = 3.0       # seconds per arc
         self.scout_sweep_angle = math.radians(45)  # turn radius (45°)
-        self.scout_speed      = 0.3
+        self.scout_speed      = 0.5
 
         # pick up 
         self.pickup_start_time = None
@@ -302,25 +306,25 @@ class StateMachine(Node):
             else:
                 self.get_logger().info("no banana coordinates sadge")
 
-            x_error = self.banana_x - 0.5 
+            x_error = self.banana_x - self.parking_distance
 
-            self.x_error_integral = np.clip(self.x_error_integral + dt *self.previous_x_error, -10.0, 10.0)
+            self.x_error_integral = np.clip(self.x_error_integral + dt *self.previous_x_error, *self.integral_bounds)
 
             self.previous_x_error = x_error
             self.previous_time = current_time 
 
-            reverse = (x_error <= -1.0 and not x_error >= 1.0)
+            reverse = (x_error <= self.distance_error_threshold[0] and not x_error >= self.distance_error_threshold[1])
 
             heading = -angle_error if reverse else angle_error 
 
             high_angular_error = (np.abs(angle_error)>np.radians(30))
 
             velocity = 0
-            if not high_angular_error and (-1.0 < x_error < 1.0): 
-                velocity = np.clip(0.5* (self.kp* x_error + self.ki*self.x_error_integral + self.kd *(x_error - self.previous_x_error)/dt), -1.0, 1.0)
+            if not high_angular_error and (self.distance_error_threshold[0] < x_error < self.distance_error_threshold[1]): 
+                velocity = np.clip(-self.parking_velocity, self.parking_velocity * (self.kp* x_error + self.ki*self.x_error_integral + self.kd *(x_error - self.previous_x_error)/dt), -self.parking_velocity, self.parking_velocity)
                 heading /= 2 
             else: 
-                velocity = -0.5 if reverse else 0.5 
+                velocity = -self.parking_velocity if reverse else self.parking_velocity 
 
             if np.sqrt((self.banana_x)**2 + (self.banana_y)**2) < 0.8: 
                 self.state = HeistState.PICKUP
