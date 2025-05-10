@@ -95,6 +95,7 @@ class StateMachine(Node):
         # -- pubs & subs --
         self.create_subscription(PoseWithCovarianceStamped, self.initial_pose_topic, self.initial_pose_cb, 1)
         self.create_subscription(Odometry, self.odom_topic, self.odom_cb, 1)
+        self.initial_pose_pub = self.create_publisher(PoseWithCovarianceStamped, self.initial_pose_topic, 1)
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 1)
 
         # basement point publisher subscriber 
@@ -366,6 +367,10 @@ class StateMachine(Node):
                 self.pickup_start_time = None
                 self.get_logger().info("PICKUP complete")
 
+                # resetting banana positions for next banana
+                self.banana_x = None 
+                self.banana_y = None 
+
                 # choose next state
                 self.goal_idx += 1
                 if self.goal_idx < len(self.goals):
@@ -374,10 +379,12 @@ class StateMachine(Node):
                     self.state = HeistState.ESCAPE
 
         elif self.state == HeistState.ESCAPE:
-            curr_pose = PoseWithCovarianceStamped()
-            curr_pose.header = self.odom_msg.header
-            curr_pose.pose = self.odom_msg.pose
-            self.plan_path(curr_pose.pose, self.start_pose)
+            new_init_pose = PoseWithCovarianceStamped()
+            new_init_pose.header = self.start_pose.header
+            new_init_pose.header.stamp = self.get_clock().now().to_msg()
+            new_init_pose.pose = self.goals[-1].pose
+            self.initial_pose_pub.publish(new_init_pose)
+            self.plan_path(self.goals[-1], self.start_pose)
             self.follow_trajectory(self.odom_msg)
             self.get_logger().info("Escapinggg...")
 
