@@ -188,10 +188,10 @@ class LaneDetector(Node):
                 return
             # choose the line with maximum mid_x for left lines
             if side == "left":
-                return min(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
+                return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             # choose the line with minimum mid_x for right lines
             if side == "right":
-                return max(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
+                return min(lines, key=lambda l: (l[0][0] + l[0][2]) / 2)
             
     # helper function to draw line
     def draw_line(self, image, line, color):

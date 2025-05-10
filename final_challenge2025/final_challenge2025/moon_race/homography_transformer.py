@@ -90,6 +90,7 @@ class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
         self.extension = 12
+        self.correction = 0.3
 
         self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
@@ -133,6 +134,9 @@ class HomographyTransformer(Node):
         mid_vec = mid_end - mid_start
         mid_vec /= np.linalg.norm(mid_vec)
         mid_end = mid_start + self.extension * mid_vec
+
+        mid_start[0] += self.correction
+        mid_end[0] += self.correction
 
         turn_side = msg.turn_side
 

@@ -3,8 +3,9 @@ race_control:
     drive_topic: "/vesc/high_level/input/nav_0"
 
     lookahead: 1.5
-    speed: 1.25
+    speed: 2.0
     wheelbase_length: 0.3302
+    lane_correction: 0.2
 
     lane_width: 0.35
     lane_buffer: 0.15
