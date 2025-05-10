@@ -382,9 +382,13 @@ class StateMachine(Node):
             new_init_pose = PoseWithCovarianceStamped()
             new_init_pose.header = self.start_pose.header
             new_init_pose.header.stamp = self.get_clock().now().to_msg()
-            new_init_pose.pose = self.goals[-1].pose
+            new_init_pose.pose.pose = self.goals[-1].pose
             self.initial_pose_pub.publish(new_init_pose)
-            self.plan_path(self.goals[-1], self.start_pose)
+
+            end_goal = PoseStamped()
+            end_goal.header = self.start_pose.header
+            end_goal.pose = self.start_pose.pose.pose
+            self.plan_path(self.goals[-1], end_goal)
             self.follow_trajectory(self.odom_msg)
             self.get_logger().info("Escapinggg...")
 
