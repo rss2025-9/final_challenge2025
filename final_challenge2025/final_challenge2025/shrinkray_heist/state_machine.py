@@ -118,7 +118,7 @@ class StateMachine(Node):
         self.previous_x_error = 0
         self.previous_time = Time() 
         self.integral_bounds = (-10.0, 10.0)
-        self.distance_error_thresholds = [-1.0, 1.0]
+        self.distance_error_threshold = [-1.0, 1.0]
         self.parking_velocity = 0.8
         self.parking_distance = 0.1 
         self.kp = 1.0
@@ -130,8 +130,8 @@ class StateMachine(Node):
         # sweep 
         self.sweep_start_time = None
         self.scout_phase = None  # 'backup', 'back_sweep', 'fwd_sweep'
-        self.scout_backup_dur = 1.0       # seconds backing up straight
-        self.scout_sweep_dur  = 3.0       # seconds per arc
+        self.scout_backup_dur = 0.2       # seconds backing up straight
+        self.scout_sweep_dur  = 0.5       # seconds per arc
         self.scout_sweep_angle = math.radians(45)  # turn radius (45°)
         self.scout_speed      = 0.5
 
@@ -320,9 +320,15 @@ class StateMachine(Node):
             high_angular_error = (np.abs(angle_error)>np.radians(30))
 
             velocity = 0
-            if not high_angular_error and (self.distance_error_threshold[0] < x_error < self.distance_error_threshold[1]): 
-                velocity = np.clip(-self.parking_velocity, self.parking_velocity * (self.kp* x_error + self.ki*self.x_error_integral + self.kd *(x_error - self.previous_x_error)/dt), -self.parking_velocity, self.parking_velocity)
-                heading /= 2 
+            if not high_angular_error and (
+                self.distance_error_threshold[0] < x_error < self.distance_error_threshold[1]
+            ):
+                velocity = np.clip(self.parking_velocity * (
+                self.kp * x_error +
+                self.ki * self.x_error_integral +
+                self.kd * (x_error - self.previous_x_error) / dt
+                ), -self.parking_velocity, self.parking_velocity)
+                heading /= 2      
             else: 
                 velocity = -self.parking_velocity if reverse else self.parking_velocity 
 
