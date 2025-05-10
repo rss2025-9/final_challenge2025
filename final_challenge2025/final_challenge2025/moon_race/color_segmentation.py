@@ -48,7 +48,7 @@ def cd_color_segmentation(img, template: str = None, node = None):
 
 	# Erosion and dilation
 	eroded_mask = cv2.erode(mask, kernel, iterations=1)
-	dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=2)
+	dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=3)
 	if node is not None:
 		debug_msg = node.bridge.cv2_to_imgmsg(dilated_mask, "mono8")
 		node.debug_pub.publish(debug_msg)
@@ -63,7 +63,7 @@ def cd_color_segmentation(img, template: str = None, node = None):
     # Line detection
 	# rho is in pixels, theta is in radians
 	lines = cv2.HoughLinesP(
-		edges, rho=1, theta=np.pi/360, threshold=5, minLineLength=70, maxLineGap=10
+		edges, rho=1, theta=np.pi/360, threshold=5, minLineLength=70, maxLineGap=20
 	)
 	
 	filtered_lines = []

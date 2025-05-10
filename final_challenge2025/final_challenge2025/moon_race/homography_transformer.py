@@ -90,7 +90,7 @@ class HomographyTransformer(Node):
     def __init__(self):
         super().__init__("homography_transformer")
         self.extension = 12
-        self.correction = 0.3
+        self.correction = 1.0
 
         self.lane_pub = self.create_publisher(WorldTrajInfo, "/trajectory/midpoint", 10)
         self.marker_pub = self.create_publisher(Marker, "/lane_marker", 1)
