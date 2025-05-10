@@ -238,7 +238,8 @@ class StateMachine(Node):
         if self.state == HeistState.IDLE:
             if self.start_pose and len(self.goals) >= 2:
                 self.goal_idx = 0
-                self.state = HeistState.PLAN_TRAJ
+                # self.state = HeistState.PLAN_TRAJ
+                self.state = HeistState.SCOUT
         elif self.state == HeistState.PLAN_TRAJ:
             if self.goal_idx == 0: 
                 self.plan_path(self.start_pose.pose, self.goals[0])
@@ -282,25 +283,25 @@ class StateMachine(Node):
 
             if self.scout_stage == 'backup':
                 if elapsed < backup_dur:  
-                    self.publish_drive_cmd(-0.5, 0.0)
+                    self.publish_drive_cmd(-0.25, 0.0)
                 else:
                     self.scout_stage = 'rotate_cw'
                     self.scout_start_time = self.get_clock().now()
             elif self.scout_stage == "rotate_cw":
                 if elapsed < rotate_dur:
-                    self.publish_drive_cmd(0.5, 1.0)
+                    self.publish_drive_cmd(0.25, 3.14)
                 else:
                     self.scout_stage = "rotate_back"
                     self.scout_start_time = self.get_clock().now()
             elif self.scout_stage == "rotate_back": 
                 if elapsed < rotate_dur: 
-                    self.publish_drive_cmd(0.5, -1.0)
+                    self.publish_drive_cmd(0.25, -3.14)
                 else:
                     self.scout_stage = "forward"
                     self.scout_start_time = self.get_clock().now()
             elif self.scout_stage == "forward": 
                 if elapsed < forward_dur: 
-                    self.publish_drive_cmd(0.5, 0.0)
+                    self.publish_drive_cmd(0.25, 0.0)
                 else:
                     self.scout_stage = "rotate_cw"
                     self.scout_start_time = self.get_clock().now()

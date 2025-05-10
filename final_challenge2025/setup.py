@@ -1,9 +1,20 @@
 import glob, os
-from setuptools import find_packages, setup
+from Cython.Build import cythonize
+from setuptools import find_packages, setup, Extension
 
 package_name = 'final_challenge2025'
-
+RACECAR_SIMULATOR_PREFIX = os.path.join(os.environ["SIM_WS"], "install", "racecar_simulator")
+extensions = Extension(
+    "scan_simulator_2d",
+    [package_name + "/scan_simulator_2d.pyx"],
+    language="c++",
+    libraries=["racecar_simulator"],
+    include_dirs=[os.path.join(RACECAR_SIMULATOR_PREFIX, "include")],
+    library_dirs=[os.path.join(RACECAR_SIMULATOR_PREFIX, "lib")],
+    extra_compile_args=['-Wno-cpp', '-g', '-Wno-maybe-uninitialized'],  # Added '-Wno-maybe-uninitialized'
+)
 setup(
+    ext_modules=cythonize(extensions, force=True, quiet=True),
     name=package_name,
     version='0.0.0',
     packages=find_packages(exclude=['test']),
