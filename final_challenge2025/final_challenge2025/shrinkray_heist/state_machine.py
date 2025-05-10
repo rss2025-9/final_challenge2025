@@ -84,7 +84,7 @@ class StateMachine(Node):
         # -- State & data --
         self.detector = Detector()
         self.bridge = CvBridge()
-        self.state = HeistState.SCOUT
+        self.state = HeistState.IDLE
         self.start_pose = None
         self.odom_msg = None
         self.goals = []
@@ -133,7 +133,7 @@ class StateMachine(Node):
         self.scout_backup_dur = 0.2       # seconds backing up straight
         self.scout_sweep_dur  = 0.5       # seconds per arc
         self.scout_sweep_angle = math.radians(45)  # turn radius (45°)
-        self.scout_speed      = 0.5
+        self.scout_speed      = 0.4
 
         # pick up 
         self.pickup_start_time = None
@@ -349,7 +349,7 @@ class StateMachine(Node):
             
             if elapsed < 10.0:
                 self.publish_drive_cmd(0.0, 0.0)
-            elif elapsed < 14.0: 
+            elif elapsed < 12.0: 
                 self.publish_drive_cmd(-0.6, 0.0)
             else:
                 # stop, reset timer to None, and advance state

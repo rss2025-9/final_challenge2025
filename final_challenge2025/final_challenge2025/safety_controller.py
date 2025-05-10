@@ -18,9 +18,9 @@ class SafetyController(Node):
         # self.braking_speed = 0.5 # braking speed - how much to slow down gradually 
         self.current_speed = 0.0 # current speed updated based on drive msgs 
         self.current_steer = 0.0 # current angle based off drive msgs
-        self.step_brake_speed = 0.3  # Slow down to this speed before stop (instead of hard stop immediately)
+        self.step_brake_speed = 0.0  # Slow down to this speed before stop (instead of hard stop immediately)
         self.hard_stop_speed = 0.0   # Full stop speed
-        self.min_slowing_distance = 0.5  # distance to start slowing down (m)
+        self.min_slowing_distance = 0.4  # distance to start slowing down (m)
 
         self.lookahead_angle = np.pi/36  #narrower cone: +/- 5 deg
 
