@@ -6,6 +6,7 @@ import threading
 import time
 from rclpy.time import Time
 import os
+from math import hypot
 
 import numpy as np
 import numpy.typing as npt
@@ -159,6 +160,14 @@ class StateMachine(Node):
     def goal_cb(self, msg: PoseStamped):
         """Callback for the goal pose of the robot"""
         self.goals.append(msg)
+        if len(self.goals) == 2: 
+            ref_point = (-5.0, 22.0)
+            self.goals.sort(
+                key=lambda goal: hypot(
+                    goal.pose.position.x - ref_point[0],
+                    goal.pose.position.y - ref_point[1]
+                )
+            )
         self.get_logger().info(f"Goal added: {msg.pose.position.x}, {msg.pose.position.y}")
 
     # YOLO callback
