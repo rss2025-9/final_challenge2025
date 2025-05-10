@@ -122,9 +122,7 @@ class StateMachine(Node):
         self.kd = 0.5
         self.banana_x = None 
         self.banana_y = None
-        # scout
-        self.scout_stage = None 
-        self.scout_start_time = None
+
         # pick up 
         self.pickup_start_time = None
 
@@ -181,7 +179,7 @@ class StateMachine(Node):
             self.detector_states["banana"] = "NONE"
 
             if label == 'traffic light':
-                if y2 < image.shape[0]//3 or confidence < 0.2:
+                if y2 < image.shape[0]//3 or confidence < 0.5:
                     continue
 
                 self.get_logger().info("traffic light detected ahead")
@@ -213,7 +211,7 @@ class StateMachine(Node):
                 else:
                     self.detector_states[label] = 'NONE'
 
-            elif self.state == HeistState.SCOUT and label == 'banana': 
+            elif (self.state == HeistState.SCOUT or self.state == HeistState.PARK) and label == 'banana': 
                 self.detector_states[label] = 'DETECTED'
                 self.get_logger().info(f"Banana detected")
 
@@ -226,11 +224,7 @@ class StateMachine(Node):
                 save_path = f"{os.path.dirname(__file__)}/banana_output.png"
                 out.save(save_path)
 
-                self.scout_stage = None 
-                self.scout_start_time = None 
-
-                self.HeistState = HeistState.PARK
-            
+                self.state = HeistState.PARK
 
     def tick(self):
         self.get_logger().info(f"State: {self.state}")
@@ -247,7 +241,7 @@ class StateMachine(Node):
                 curr_pose = PoseWithCovarianceStamped()
                 curr_pose.header = self.odom_msg.header
                 curr_pose.pose = self.odom_msg.pose
-                self.plan_path(curr_pose, self.goals[1])
+                self.plan_path(curr_pose.pose, self.goals[1])
             self.state = HeistState.FOLLOW_TRAJ
         elif self.state == HeistState.FOLLOW_TRAJ:
             if not self.red_detected and self.detector_states["traffic light"] == 'RED':
@@ -268,49 +262,17 @@ class StateMachine(Node):
             if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
         elif self.state == HeistState.SCOUT:
-            if self.scout_stage is None:
-                self.scout_stage = 'backup'
-                self.scout_start_time = self.get_clock().now()
-                self.get_logger().info("Entering SCOUT: backing up")
-
-            elapsed = (self.get_clock().now().nanoseconds 
-                    - self.scout_start_time.nanoseconds) / 1e9
-            
-            # durations 
-            backup_dur = 1.0 
-            rotate_dur = 3.0 
-            forward_dur = 1.0 
-
-            if self.scout_stage == 'backup':
-                if elapsed < backup_dur:  
-                    self.publish_drive_cmd(-0.25, 0.0)
-                else:
-                    self.scout_stage = 'rotate_cw'
-                    self.scout_start_time = self.get_clock().now()
-            elif self.scout_stage == "rotate_cw":
-                if elapsed < rotate_dur:
-                    self.publish_drive_cmd(0.25, 3.14)
-                else:
-                    self.scout_stage = "rotate_back"
-                    self.scout_start_time = self.get_clock().now()
-            elif self.scout_stage == "rotate_back": 
-                if elapsed < rotate_dur: 
-                    self.publish_drive_cmd(0.25, -3.14)
-                else:
-                    self.scout_stage = "forward"
-                    self.scout_start_time = self.get_clock().now()
-            elif self.scout_stage == "forward": 
-                if elapsed < forward_dur: 
-                    self.publish_drive_cmd(0.25, 0.0)
-                else:
-                    self.scout_stage = "rotate_cw"
-                    self.scout_start_time = self.get_clock().now()
-            
+            pass 
         elif self.state == HeistState.PARK:
             current_time = self.get_clock().now() 
             dt = (current_time.nanoseconds - self.previous_time.nanoseconds) / 10e9
 
-            angle_error = np.arctan2(self.banana_y, self.banana_x)
+            self.get_logger().info(f'banana: {self.banana_x}, {self.banana_y}')
+            if self.banana_x and self.banana_y: 
+                angle_error = np.arctan2(self.banana_y, self.banana_x)
+            else:
+                self.get_logger().info("no banana coordinates sadge")
+
             x_error = self.banana_x - 0.5 
 
             self.x_error_integral = np.clip(self.x_error_integral + dt *self.previous_x_error, -10.0, 10.0)
@@ -326,12 +288,12 @@ class StateMachine(Node):
 
             velocity = 0
             if not high_angular_error and (-1.0 < x_error < 1.0): 
-                velocity = np.clip(0.5* (self.kp* x_error + self.ki*self.x_error_integral + self.kd *(x_error - self.previous_x_error)/dt), -0.5, 0.5)
+                velocity = np.clip(0.5* (self.kp* x_error + self.ki*self.x_error_integral + self.kd *(x_error - self.previous_x_error)/dt), -1.0, 1.0)
                 heading /= 2 
             else: 
                 velocity = -0.5 if reverse else 0.5 
 
-            if velocity == 0: 
+            if np.sqrt((self.banana_x)**2 + (self.banana_y)**2) < 0.75: 
                 self.state = HeistState.PICKUP
                 self.get_logger().info("PARKING DONE")
                 self.publish_drive_cmd(0.0, 0.0)
