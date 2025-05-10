@@ -63,11 +63,14 @@ def cd_color_segmentation(img, template: str = None, node = None):
     # Line detection
 	# rho is in pixels, theta is in radians
 	lines = cv2.HoughLinesP(
-		edges, rho=1, theta=np.pi/360, threshold=1, minLineLength=70, maxLineGap=20
+		edges, rho=1, theta=np.pi/360, threshold=3, minLineLength=70, maxLineGap=15
 	)
 	
 	filtered_lines = []
-	threshold_angle = 15	# in degrees (tune this value if needed)
+	lower_threshold_angle = 17	# in degrees (tune this value if needed)
+	upper_threshold_angle = 85  # in degrees (tune this value if needed)
+	least_violator = None
+	least_violator_delta = float('inf')
 	for line in lines:
 		x1, y1, x2, y2 = line[0]
 		dx = x2 - x1
@@ -77,8 +80,11 @@ def cd_color_segmentation(img, template: str = None, node = None):
 		else:
 			angle = abs(np.degrees(np.arctan2(dy, dx)))	# angle in degrees
 		
-		if angle > threshold_angle:
+		if lower_threshold_angle < angle < upper_threshold_angle:
 			filtered_lines.append([[x1, y1, x2, y2]])
+		elif(delta := min(abs(lower_threshold_angle - angle), abs(upper_threshold_angle - angle))) < least_violator_delta:
+			least_violator = [[x1, y1, x2, y2]]
+			least_violator_delta = delta
 
 	# Return lines and y-coordinate of the cropped image
-	return filtered_lines, crop_y_start, result
+	return filtered_lines if filtered_lines else [least_violator], crop_y_start, result
