@@ -37,7 +37,7 @@ def cd_color_segmentation(img, template: str = None, node = None):
 	hsv_object = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
 
 	# define lower and upper bound for white color
-	lower_bound = np.array([0, 0, 150])	# hue, saturation (intensity), value (brightness)
+	lower_bound = np.array([0, 0, 180])	# hue, saturation (intensity), value (brightness)
 	upper_bound = np.array([179, 50, 255])	# value=0 -> black, saturation=0 -> white if value is high enough
 
 	# create mask
