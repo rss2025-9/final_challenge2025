@@ -123,6 +123,14 @@ class StateMachine(Node):
         self.banana_x = None 
         self.banana_y = None
 
+        # sweep 
+        self.sweep_start_time = None
+        self.scout_phase = None  # 'backup', 'back_sweep', 'fwd_sweep'
+        self.scout_backup_dur = 1.0       # seconds backing up straight
+        self.scout_sweep_dur  = 2.0       # seconds per arc
+        self.scout_sweep_angle = math.radians(45)  # turn radius (45°)
+        self.scout_speed      = 0.3
+
         # pick up 
         self.pickup_start_time = None
 
@@ -249,7 +257,41 @@ class StateMachine(Node):
             if self.odom_msg: 
                 self.follow_trajectory(self.odom_msg)
         elif self.state == HeistState.SCOUT:
-            pass 
+            now = self.get_clock().now().nanoseconds / 1e9
+            if self.scout_phase is None:
+                self.scout_phase = 'backup'
+                self.sweep_start_time = now
+                self.get_logger().info("SCOUT: starting backup phase")
+
+            elapsed = now - self.sweep_start_time
+            if self.scout_phase == 'backup':
+                if elapsed < self.scout_backup_dur:
+                    self.publish_drive_cmd(-self.scout_speed, 0.0)
+                else:
+                    # go into backward curve
+                    self.scout_phase = 'back_sweep'
+                    self.sweep_start_time = now
+                    self.get_logger().info("SCOUT: backing curve phase")
+            elif self.scout_phase == 'back_sweep':
+                if elapsed < self.scout_sweep_dur:
+                    # negative speed (back), positive steering = right turn
+                    self.publish_drive_cmd(-self.scout_speed, +self.scout_sweep_angle)
+                else:
+                    # switch to forward arc
+                    self.scout_phase = 'fwd_sweep'
+                    self.sweep_start_time = now
+                    self.get_logger().info("SCOUT: forward curve phase")
+            elif self.scout_phase == 'fwd_sweep':
+                if elapsed < self.scout_sweep_dur:
+                    # forward speed, negative steering = left turn
+                    self.publish_drive_cmd(+self.scout_speed, -self.scout_sweep_angle)
+                else:
+                    # loop back to backup
+                    self.scout_phase = 'backup'
+                    self.sweep_start_time = now
+                    self.get_logger().info("SCOUT: looping back to backup")
+            
+            
         elif self.state == HeistState.PARK:
             current_time = self.get_clock().now() 
             dt = (current_time.nanoseconds - self.previous_time.nanoseconds) / 10e9
